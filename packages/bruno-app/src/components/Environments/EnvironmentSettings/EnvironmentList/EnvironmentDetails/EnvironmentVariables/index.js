@@ -90,7 +90,7 @@ const EnvironmentVariables = ({ environment, collection, setIsModified, original
 
   useEffect(() => {
     if (formik.dirty) {
-      // Smooth scrolling to the changed parameter is temporarily disabled 
+      // Smooth scrolling to the changed parameter is temporarily disabled
       // due to UX issues when editing the first row in a long list of environment variables.
       // addButtonRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
