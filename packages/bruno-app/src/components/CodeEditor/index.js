@@ -326,6 +326,9 @@ export default class CodeEditor extends React.Component {
         fontSize={this.props.fontSize}
         ref={(node) => {
           this._node = node;
+          if (this.props.forwardedRef) {
+            this.props.forwardedRef.current = this;
+          }
         }}
       />
     );

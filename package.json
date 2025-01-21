@@ -53,5 +53,8 @@
   },
   "overrides": {
     "rollup": "3.29.5"
+  },
+  "dependencies": {
+    "@tabler/icons-react": "^3.28.1"
   }
 }

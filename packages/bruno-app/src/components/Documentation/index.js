@@ -2,12 +2,13 @@ import 'github-markdown-css/github-markdown.css';
 import get from 'lodash/get';
 import { updateRequestDocs } from 'providers/ReduxStore/slices/collections';
 import { useTheme } from 'providers/Theme';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { saveRequest } from 'providers/ReduxStore/slices/collections/actions';
 import Markdown from 'components/MarkDown';
 import CodeEditor from 'components/CodeEditor';
 import StyledWrapper from './StyledWrapper';
+import MarkdownToolbar from 'components/MarkdownToolbar';
 
 const Documentation = ({ item, collection }) => {
   const dispatch = useDispatch();
@@ -15,6 +16,7 @@ const Documentation = ({ item, collection }) => {
   const [isEditing, setIsEditing] = useState(false);
   const docs = item.draft ? get(item, 'draft.request.docs') : get(item, 'request.docs');
   const preferences = useSelector((state) => state.app.preferences);
+  const editorRef = useRef(null);
 
   const toggleViewMode = () => {
     setIsEditing((prev) => !prev);
@@ -42,6 +44,8 @@ const Documentation = ({ item, collection }) => {
         {isEditing ? 'Preview' : 'Edit'}
       </div>
 
+      {isEditing && <MarkdownToolbar editorRef={editorRef} />}
+
       {isEditing ? (
         <CodeEditor
           collection={collection}
@@ -52,6 +56,7 @@ const Documentation = ({ item, collection }) => {
           onEdit={onEdit}
           onSave={onSave}
           mode="application/text"
+          ref={editorRef}
         />
       ) : (
         <Markdown collectionPath={collection.pathname} onDoubleClick={toggleViewMode} content={docs} />
