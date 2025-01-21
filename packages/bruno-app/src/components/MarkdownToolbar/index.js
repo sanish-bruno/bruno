@@ -189,38 +189,70 @@ const MarkdownToolbar = ({ editorRef }) => {
 
       editor?.replaceSelection(newSelection);
 
-      console.log('start', start);
-      console.log('end', end);
-      console.log('lines', lines);
+      const adjustment = allQuoted ? 0 : 2;
+      const newEndCh = end.ch + adjustment * lines.length;
 
-      const adjustment = allQuoted ? -2 : 2;
-      const newEndCh = end.ch + adjustment * (lines.length + 1);
-
-      editor?.setSelection({ line: start.line, ch: start.ch }, { line: end.line, ch: end.ch });
+      editor?.setSelection({ line: start.line, ch: start.ch }, { line: end.line, ch: newEndCh });
     });
   };
 
   const handleBulletList = () => {
     console.log('Bullet List');
-    applyEditorAction(({ editor, cursor, line }) => {
-      editor?.replaceRange(`- ${line}`, { line: cursor.line, ch: 0 }, { line: cursor.line, ch: line.length });
-      editor?.setCursor({ line: cursor.line, ch: cursor.ch + 2 });
+
+    applyEditorAction(({ editor, cursor, selection }) => {
+      const lines = selection.split('\n');
+      const allListed = lines.every((line) => line.startsWith('- '));
+      const newLines = allListed ? lines.map((line) => line.slice(2)) : lines.map((line) => `- ${line}`);
+
+      const newSelection = newLines.join('\n');
+      const from = editor.getCursor('from');
+      const to = editor.getCursor('to');
+
+      editor?.replaceSelection(newSelection);
+
+      const adjustment = allListed ? 0 : 2;
+      const newEndCh = to.ch + adjustment * lines.length;
+
+      editor?.setSelection({ line: from.line, ch: from.ch }, { line: to.line, ch: newEndCh });
     });
   };
 
   const handleNumberedList = () => {
     console.log('Numbered List');
-    applyEditorAction(({ editor, cursor, line }) => {
-      editor?.replaceRange(`1. ${line}`, { line: cursor.line, ch: 0 }, { line: cursor.line, ch: line.length });
-      editor?.setCursor({ line: cursor.line, ch: cursor.ch + 3 });
+
+    applyEditorAction(({ editor, cursor, selection }) => {
+      const lines = selection.split('\n');
+      const allNumbered = lines.every((line) => /^\d+\.\s/.test(line));
+      const newLines = allNumbered
+        ? lines.map((line) => line.replace(/^\d+\.\s/, ''))
+        : lines.map((line, index) => `${index + 1}. ${line}`);
+
+      const newSelection = newLines.join('\n');
+      const from = editor.getCursor('from');
+      const to = editor.getCursor('to');
+
+      editor?.replaceSelection(newSelection);
+
+      const adjustment = allNumbered ? 0 : 3;
+      const newEndCh = to.ch + adjustment * lines.length;
+
+      editor?.setSelection({ line: from.line, ch: from.ch }, { line: to.line, ch: newEndCh });
     });
   };
 
   const handleLink = () => {
     console.log('Link');
-    applyEditorAction(({ editor, cursor, line }, selection) => {
-      editor?.replaceSelection(`[${selection}](url)`);
-      editor?.setCursor({ line: cursor.line, ch: cursor.ch + selection.length + 3 });
+    applyEditorAction(({ editor, cursor, line, selection }) => {
+      if (selection) {
+        editor?.replaceSelection(`[${selection}](url)`);
+        editor?.setSelection(
+          { line: cursor.line, ch: cursor.ch + selection.length + 3 },
+          { line: cursor.line, ch: cursor.ch + selection.length + 6 }
+        );
+      } else {
+        editor?.replaceSelection(`[](url)`);
+        editor?.setCursor({ line: cursor.line, ch: cursor.ch + 1 });
+      }
     });
   };
 
