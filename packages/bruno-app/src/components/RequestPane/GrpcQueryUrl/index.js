@@ -6,6 +6,7 @@ import { saveRequest, browseFiles, loadGrpcMethodsFromReflection, openCollection
 import { useTheme } from 'providers/Theme';
 import SingleLineEditor from 'components/SingleLineEditor/index';
 import { isMacOS } from 'utils/common/platform';
+import { getRelativePath } from 'utils/common/path';
 import StyledWrapper from './StyledWrapper';
 import {
   IconX,
@@ -520,7 +521,7 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
       .then((filePaths) => {
         if (filePaths && filePaths.length > 0) {
           const filePath = filePaths[0];
-          const relativePath = window?.ipcRenderer?.getRelativePath(filePath, collection.pathname);
+          const relativePath = getRelativePath(filePath, collection.pathname);
           setProtoFilePath(relativePath);
     
           dispatch(updateRequestProtoPath({
