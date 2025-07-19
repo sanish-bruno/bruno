@@ -42,9 +42,9 @@ const SingleGrpcMessage = ({ message, item, collection, index, methodType, isCol
         );
     };
     
-    const onSend = () => {
+    const onSend = async () => {
       try {
-        dispatch(sendGrpcMessage(item, collection.uid, content))
+        await sendGrpcMessage(item, collection.uid, content);
       } catch (error) {
         console.error('Error sending message:', error);
       }
