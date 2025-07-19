@@ -528,6 +528,10 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
             itemUid: item.uid,
             collectionUid: collection.uid
           }));
+
+          // Load methods from the newly selected proto file
+          const absolutePath = window?.ipcRenderer?.resolvePath(relativePath, collection.pathname);
+          loadMethodsFromProtoFile(absolutePath);
         }
       })
       .catch((err) => {
