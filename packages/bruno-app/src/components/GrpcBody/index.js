@@ -1,8 +1,8 @@
-import React, { useState, useRef } from 'react';
-import get from 'lodash/get';
+import React, { useState } from 'react';
+import { get } from 'lodash';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from 'providers/Theme';
-import { updateRequestBody } from 'providers/ReduxStore/slices/collections/index';
+import { updateRequestBody } from 'providers/ReduxStore/slices/collections';
 import { saveRequest } from 'providers/ReduxStore/slices/collections/actions';
 import { sendGrpcMessage, generateGrpcSampleMessage } from 'utils/network/index';
 import toast from 'react-hot-toast';
@@ -13,7 +13,6 @@ import { IconSend, IconRefresh, IconWand, IconPlus, IconTrash, IconChevronDown, 
 import ToolHint from 'components/ToolHint/index';
 import { toastError, toastSuccess } from 'utils/common/error';
 import { format, applyEdits } from 'jsonc-parser';
-import ScrollIndicator from 'components/ScrollIndicator';
 
 const SingleGrpcMessage = ({ message, item, collection, index, methodType, isCollapsed, onToggleCollapse, handleRun }) => {
     const dispatch = useDispatch();
@@ -217,7 +216,6 @@ const GrpcBody = ({ item, collection, handleRun }) => {
   const { theme } = useTheme();
   const [collapsedMessages, setCollapsedMessages] = useState([]);
   const body = item.draft ? get(item, 'draft.request.body') : get(item, 'request.body');
-  const messagesContainerRef = useRef(null);
   
   const methodType = item.draft ? get(item, 'draft.request.methodType') : get(item, 'request.methodType');
   const canClientSendMultipleMessages = methodType === 'client-streaming' || methodType === 'bidi-streaming';
@@ -249,13 +247,6 @@ const GrpcBody = ({ item, collection, handleRun }) => {
             collectionUid: collection.uid
         })
     );
-    
-    setTimeout(() => {
-      if (messagesContainerRef.current) {
-        const { scrollHeight } = messagesContainerRef.current;
-        messagesContainerRef.current.scrollTop = scrollHeight;
-      }
-    }, 100);
   };
 
 
@@ -283,7 +274,6 @@ const GrpcBody = ({ item, collection, handleRun }) => {
       <div 
         id="grpc-messages-container" 
         className="flex-1 pb-16"
-        ref={messagesContainerRef}
       >
         {body.grpc
           .filter((_, index) => canClientSendMultipleMessages || index === 0)
@@ -301,11 +291,6 @@ const GrpcBody = ({ item, collection, handleRun }) => {
           />
         ))}
       </div>
-      
-      <ScrollIndicator 
-        containerRef={messagesContainerRef} 
-        dependencies={[body?.grpc, collapsedMessages]} 
-      />
       
       {canClientSendMultipleMessages && (
         <div className="add-message-btn-container">

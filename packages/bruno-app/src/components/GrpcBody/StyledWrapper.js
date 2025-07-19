@@ -32,11 +32,6 @@ const Wrapper = styled.div`
   #grpc-messages-container {
     max-height: calc(100vh - 250px);
     overflow-y: auto;
-    &::-webkit-scrollbar {
-      display: none;
-    }
-
-    scrollbar-width: none;
     position: relative;
   }
   

@@ -914,6 +914,11 @@ export const newGrpcRequest = (params) => (dispatch, getState) => {
     const resolvedFilename = resolveRequestFilename(filename);
     const fullName = path.join(collection.pathname, resolvedFilename);
     const { ipcRenderer } = window;
+    
+    // Set the seq field for gRPC requests
+    const items = filter(collection.items, (i) => isItemAFolder(i) || isItemARequest(i));
+    item.seq = items.length + 1;
+    
     ipcRenderer.invoke('renderer:new-request', fullName, item).then(() => {
       // task middleware will track this and open the new request in a new tab once request is created
       dispatch(

@@ -305,7 +305,6 @@ const RequestTabPanel = () => {
             <ResponsePane
               item={item}
               collection={collection}
-              rightPaneWidth={rightPaneWidth}
               response={item.response}
             />
           )}

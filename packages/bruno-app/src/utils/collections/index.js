@@ -560,8 +560,6 @@ export const transformCollectionToSaveToExportAsFile = (collection, options = {}
 export const transformRequestToSaveToFilesystem = (item) => {
   const _item = item.draft ? item.draft : item;
 
-  console.log('>> item.draft', item.draft);
-
   const itemToSave = {
     uid: _item.uid,
     type: _item.type,

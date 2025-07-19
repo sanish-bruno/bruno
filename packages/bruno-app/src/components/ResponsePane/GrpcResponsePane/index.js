@@ -16,7 +16,7 @@ import StyledWrapper from './StyledWrapper';
 import ResponseTrailers from './ResponseTrailers';
 import GrpcQueryResult from './GrpcQueryResult';
 
-const GrpcResponsePane = ({ rightPaneWidth, item, collection }) => {
+const GrpcResponsePane = ({ item, collection }) => {
   const dispatch = useDispatch();
   const tabs = useSelector((state) => state.tabs.tabs);
   const activeTabUid = useSelector((state) => state.tabs.activeTabUid);
@@ -44,7 +44,6 @@ const GrpcResponsePane = ({ rightPaneWidth, item, collection }) => {
           <GrpcQueryResult
             item={item}
             collection={collection}
-            width={rightPaneWidth}
           />
         );
       }
@@ -55,7 +54,7 @@ const GrpcResponsePane = ({ rightPaneWidth, item, collection }) => {
         return <ResponseTrailers trailers={response.trailers} />;
       }
       case 'timeline': {
-        return <Timeline collection={collection} item={item} width={rightPaneWidth} />;
+        return <Timeline collection={collection} item={item} />;
       }
       default: {
         return <div>404 | Not found</div>;
@@ -140,7 +139,6 @@ const GrpcResponsePane = ({ rightPaneWidth, item, collection }) => {
             <Timeline
               collection={collection}
               item={item}
-              width={rightPaneWidth}
             />
           ) : null
         ) : (

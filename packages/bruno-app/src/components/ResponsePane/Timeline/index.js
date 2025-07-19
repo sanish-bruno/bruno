@@ -1,10 +1,9 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import StyledWrapper from './StyledWrapper';
 import { findItemInCollection, findParentItemInCollection } from 'utils/collections/index';
 import { get } from 'lodash';
 import TimelineItem from './TimelineItem/index';
 import GrpcTimelineItem from './GrpcTimelineItem/index';
-import ScrollIndicator from 'components/ScrollIndicator';
 
 const getEffectiveAuthSource = (collection, item) => {
   const authMode = item.draft ? get(item, 'draft.request.auth.mode') : get(item, 'request.auth.mode');
@@ -48,9 +47,6 @@ const Timeline = ({ collection, item }) => {
   const authSource = getEffectiveAuthSource(collection, item);
   const isGrpcRequest = item.type === 'grpc-request';
   
-  // Create a ref for the scrollable container
-  const timelineContainerRef = useRef(null);
-
   // Filter timeline entries based on new rules
   const  combinedTimeline = ([...(collection?.timeline || [])]).filter(obj => {
     // Always show entries for this item
@@ -70,9 +66,8 @@ const Timeline = ({ collection, item }) => {
       className="pb-4 w-full flex flex-grow flex-col relative"
       // style={{ maxWidth: width - 60, overflowWrap: 'break-word' }}
     >
-      {/* Timeline container with hidden scrollbar */}
+      {/* Timeline container with scrollbar */}
       <div 
-        ref={timelineContainerRef}
         className="timeline-container flex-1 overflow-y-auto"
         style={{ maxHeight: 'calc(100vh - 250px)' }}
       >
@@ -148,12 +143,6 @@ const Timeline = ({ collection, item }) => {
           return null;
         })}
       </div>
-      
-      {/* Use the improved ScrollIndicator component */}
-      <ScrollIndicator 
-        containerRef={timelineContainerRef} 
-        dependencies={[collection?.timeline, item.response]} 
-      />
     </StyledWrapper>
   );
 };

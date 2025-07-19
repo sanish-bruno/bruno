@@ -8,7 +8,7 @@ import StyledWrapper from './StyledWrapper';
 import { formatISO9075 } from 'date-fns';
 import GrpcError from './GrpcError';
 
-const GrpcQueryResult = ({ item, collection, width }) => {
+const GrpcQueryResult = ({ item, collection }) => {
   const { displayedTheme } = useTheme();
   const preferences = useSelector((state) => state.app.preferences);
   const [showErrorMessage, setShowErrorMessage] = useState(true);

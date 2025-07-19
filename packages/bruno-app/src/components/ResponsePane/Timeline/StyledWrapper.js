@@ -4,10 +4,7 @@ const StyledWrapper = styled.div`
   position: relative;
 
   .timeline-container {
-    scrollbar-width: none; /* Firefox */
-    &::-webkit-scrollbar {
-      display: none; /* Chrome, Safari, Edge */
-    }
+    /* Generic scrollbar enabled */
   }
 
   .timeline-event {
