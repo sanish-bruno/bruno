@@ -1,6 +1,7 @@
 const { ipcRenderer, contextBridge, webUtils } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const { normalizeAndResolvePath, isFile } = require('./utils/filesystem');
 
 contextBridge.exposeInMainWorld('ipcRenderer', {
   invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
@@ -17,19 +18,14 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     const path = webUtils.getPathForFile(file);
     return path;
   },
-  existsSync(filePath, options) {
-    return fs.existsSync(filePath, options);
-  },
-  getRelativePath(absolutePath, basePath) {
-    try {
-      return path.relative(basePath, absolutePath);
-    } catch (error) {
-      return absolutePath;
-    }
+  existsSync(filePath) {
+    const normalizedPath = normalizeAndResolvePath(filePath);
+    return isFile(normalizedPath);
   },
   resolvePath(relativePath, basePath) {
     try {
-      return path.resolve(basePath, relativePath);
+      const resolvedPath = path.resolve(basePath, relativePath);
+      return normalizeAndResolvePath(resolvedPath);
     } catch (error) {
       return relativePath;
     }

@@ -6,21 +6,22 @@ import toast from 'react-hot-toast';
 import { updateBrunoConfig } from 'providers/ReduxStore/slices/collections/actions';
 import cloneDeep from 'lodash/cloneDeep';
 import { IconTrash, IconFile, IconFileImport, IconAlertCircle } from '@tabler/icons';
+import path from 'utils/common/path';
 
 const getBasename = (filePath) => {
-  const parts = filePath.split(/[/\\]/);
+  const parts = filePath.split(path.sep);
   return parts[parts.length - 1];
 };
 
 const getDirPath = (filePath) => {
-  const parts = filePath.split(/[/\\]/);
+  const parts = filePath.split(path.sep);
   parts.pop();
-  return parts.join('/');
+  return parts.join(path.sep);
 };
 
 const getRelativePath = (absolutePath, collectionPath) => {
   try {
-    const relativePath = window?.ipcRenderer?.getRelativePath(absolutePath, collectionPath);
+    const relativePath = path.relative(collectionPath, absolutePath);
     return relativePath || absolutePath;
   } catch (error) {
     return absolutePath;
@@ -72,7 +73,7 @@ const PresetsSettings = ({ collection }) => {
           const relativePath = getRelativePath(filePath, collection.pathname);
           const protoFileObj = {
             path: relativePath,
-            type: 'relative'
+            type: 'file-system'
           };
           
           // Check if this path already exists
@@ -231,7 +232,7 @@ const PresetsSettings = ({ collection }) => {
                         const updatedProtoFiles = [...formik.values.protoFiles];
                         updatedProtoFiles[replaceIndex] = {
                           path: relativePath,
-                          type: 'relative'
+                          type: 'file-system'
                         };
                         formik.setFieldValue('protoFiles', updatedProtoFiles);
                       }

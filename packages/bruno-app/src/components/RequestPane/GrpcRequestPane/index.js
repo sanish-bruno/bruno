@@ -5,19 +5,11 @@ import { updateRequestPaneTab } from 'providers/ReduxStore/slices/tabs';
 import RequestHeaders from 'components/RequestPane/RequestHeaders';
 import GrpcBody from 'components/GrpcBody/index';
 import GrpcAuth from './GrpcAuth/index';
-import DotIcon from 'components/Icons/Dot';
+import StatusDot from 'components/StatusDot/index';
 import StyledWrapper from './StyledWrapper';
 import { find, get } from 'lodash';
 import Documentation from 'components/Documentation/index';
 import { useEffect } from 'react';
-
-const ContentIndicator = () => {
-  return (
-    <sup className="ml-[.125rem] opacity-80 font-medium">
-      <DotIcon width="10"></DotIcon>
-    </sup>
-  );
-};
 
 const GrpcRequestPane = ({ item, collection, handleRun }) => {
   const dispatch = useDispatch();
@@ -89,7 +81,7 @@ const GrpcRequestPane = ({ item, collection, handleRun }) => {
       <div className="flex flex-wrap items-center tabs" role="tablist">
         <div className={getTabClassname('body')} role="tab" onClick={() => selectTab('body')}>
           Message
-          {body.mode !== 'none' && <ContentIndicator />}
+          {body.mode !== 'none' && <StatusDot type="default" />}
         </div>
         <div className={getTabClassname('headers')} role="tab" onClick={() => selectTab('headers')}>
           Metadata
@@ -97,11 +89,11 @@ const GrpcRequestPane = ({ item, collection, handleRun }) => {
         </div>
         <div className={getTabClassname('auth')} role="tab" onClick={() => selectTab('auth')}>
           Auth
-          {auth.mode !== 'none' && <ContentIndicator />}
+          {auth.mode !== 'none' && <StatusDot type="default" />}
         </div>
         <div className={getTabClassname('docs')} role="tab" onClick={() => selectTab('docs')}>
           Docs
-          {docs && docs.length > 0 && <ContentIndicator />}
+          {docs && docs.length > 0 && <StatusDot type="default" />}
         </div>
       </div>
       <section
