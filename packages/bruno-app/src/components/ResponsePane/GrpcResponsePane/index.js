@@ -15,6 +15,7 @@ import ResponseClear from '../ResponseClear';
 import StyledWrapper from './StyledWrapper';
 import ResponseTrailers from './ResponseTrailers';
 import GrpcQueryResult from './GrpcQueryResult';
+import ResponseLayoutToggle from '../ResponseLayoutToggle';
 
 const GrpcResponsePane = ({ item, collection }) => {
   const dispatch = useDispatch();
@@ -122,6 +123,7 @@ const GrpcResponsePane = ({ item, collection }) => {
               <ClearTimeline item={item} collection={collection} />
             ) : item?.response ? (
               <>
+                <ResponseLayoutToggle />
                 <ResponseClear item={item} collection={collection} />
                 <GrpcStatusCode status={response.statusCode} text={response.statusText} details={response.statusDescription} />
                 <ResponseTime duration={response.duration} />

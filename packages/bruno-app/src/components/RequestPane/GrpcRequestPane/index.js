@@ -19,7 +19,7 @@ const ContentIndicator = () => {
   );
 };
 
-const GrpcRequestPane = ({ item, collection, leftPaneWidth, handleRun }) => {
+const GrpcRequestPane = ({ item, collection, handleRun }) => {
   const dispatch = useDispatch();
   const tabs = useSelector((state) => state.tabs.tabs);
   const activeTabUid = useSelector((state) => state.tabs.activeTabUid);

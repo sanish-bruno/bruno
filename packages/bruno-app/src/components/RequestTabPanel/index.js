@@ -257,7 +257,7 @@ const RequestTabPanel = () => {
           <QueryUrl item={item} collection={collection} handleRun={handleRun} />
         )}
       </div>
-      <section ref={mainSectionRef} className={`main flex ${isVerticalLayout ? 'flex-col' : ''} flex-grow pb-4 relative`}>
+      <section ref={mainSectionRef} className={`main flex ${isVerticalLayout ? 'flex-col' : ''} flex-grow pb-4 relative overflow-auto`}>
         <section className="request-pane">
           <div
             className="px-4 h-full"

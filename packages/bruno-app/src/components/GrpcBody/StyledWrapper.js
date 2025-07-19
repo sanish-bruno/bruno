@@ -5,7 +5,7 @@ const Wrapper = styled.div`
   flex-direction: column;
   width: 100%;
   flex: 1;
-  height: 100%;
+  height: ${(props) => props.isVerticalLayout ? 'calc(100% - 42px)' : '100%'};
   position: relative;
 
   .grpc-message-header {
