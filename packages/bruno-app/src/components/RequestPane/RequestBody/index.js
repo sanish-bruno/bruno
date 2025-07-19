@@ -9,7 +9,6 @@ import { updateRequestBody } from 'providers/ReduxStore/slices/collections';
 import { sendRequest, saveRequest } from 'providers/ReduxStore/slices/collections/actions';
 import StyledWrapper from './StyledWrapper';
 import FileBody from '../FileBody/index';
-import GrpcBody from 'components/GrpcBody/index';
 
 const RequestBody = ({ item, collection }) => {
   const dispatch = useDispatch();

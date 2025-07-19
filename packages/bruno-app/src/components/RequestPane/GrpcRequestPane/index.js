@@ -3,7 +3,7 @@ import classnames from 'classnames';
 import { useSelector, useDispatch } from 'react-redux';
 import { updateRequestPaneTab } from 'providers/ReduxStore/slices/tabs';
 import RequestHeaders from 'components/RequestPane/RequestHeaders';
-import GrpcBody from 'components/GrpcBody/index';
+import GrpcBody from 'components/RequestPane/GrpcBody';
 import GrpcAuth from './GrpcAuth/index';
 import StatusDot from 'components/StatusDot/index';
 import StyledWrapper from './StyledWrapper';

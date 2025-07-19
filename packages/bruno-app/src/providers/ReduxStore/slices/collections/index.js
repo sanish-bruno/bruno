@@ -551,7 +551,6 @@ export const collectionsSlice = createSlice({
 
       if (collection) {
         const item = findItemInCollection(collection, action.payload.itemUid);
-        console.log('>> item', item);
 
         if (item && item.draft) {
           item.request = item.draft.request;
@@ -1336,7 +1335,6 @@ export const collectionsSlice = createSlice({
       if (collection) {
         const item = findItemInCollection(collection, action.payload.itemUid);
 
-        console.log('>> item', item);
         if (item && isItemARequest(item)) {
           if (!item.draft) {
             item.draft = cloneDeep(item);

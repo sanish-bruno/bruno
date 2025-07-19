@@ -5,7 +5,6 @@ import { useTheme } from 'providers/Theme';
 import { updateRequestBody } from 'providers/ReduxStore/slices/collections';
 import { saveRequest } from 'providers/ReduxStore/slices/collections/actions';
 import { sendGrpcMessage, generateGrpcSampleMessage } from 'utils/network/index';
-import toast from 'react-hot-toast';
 
 import CodeEditor from 'components/CodeEditor/index';
 import StyledWrapper from './StyledWrapper';
