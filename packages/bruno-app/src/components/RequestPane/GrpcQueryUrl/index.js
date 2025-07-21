@@ -129,7 +129,7 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
   const [grpcurlCommand, setGrpcurlCommand] = useState('');
 
   // Get collection proto files from presets
-  const collectionProtoFiles = get(collection, 'brunoConfig.presets.protoFiles', []);
+  const collectionProtoFiles = get(collection, 'brunoConfig.grpc.protoFiles', []);
 
   // Cache for gRPC methods fetched via reflection
   const [reflectionCache, setReflectionCache] = useLocalStorage('bruno.grpc.reflectionCache', {});
@@ -587,8 +587,8 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
       });
   };
 
-  const handleOpenCollectionPresets = () => {
-    dispatch(openCollectionSettings(collection.uid, 'presets'));
+  const handleOpenCollectionGrpc = () => {
+    dispatch(openCollectionSettings(collection.uid, 'grpc'));
   };
 
   const debouncedOnUrlChange = useCallback(debounce(onUrlChange, 1000), [handleReflection, item, collection.uid, protoFilePath, url, reflectionCache]);
@@ -690,7 +690,7 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleOpenCollectionPresets();
+                          handleOpenCollectionGrpc();
                         }}
                         className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
                       >
@@ -705,7 +705,7 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
                           Some proto files could not be found. <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOpenCollectionPresets();
+                              handleOpenCollectionGrpc();
                             }}
                             className="text-red-600 dark:text-red-400 underline hover:text-red-700 dark:hover:text-red-300 ml-1"
                           >

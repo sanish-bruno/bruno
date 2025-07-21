@@ -309,9 +309,6 @@ const registerGrpcEventHandlers = (window) => {
         body: preparedRequest.body,
         timestamp: Date.now()
       }
-
-      sendEvent('grpc:request', preparedRequest.uid, collection.uid, requestSent);
-
       // Start gRPC connection with the processed request and certificates
       await grpcClient.startConnection({
         request: preparedRequest, 
@@ -323,6 +320,8 @@ const registerGrpcEventHandlers = (window) => {
         pfx,
         verifyOptions
       });
+
+      sendEvent('grpc:request', preparedRequest.uid, collection.uid, requestSent);
       
       // Send OAuth credentials update if available
       if (preparedRequest?.oauth2Credentials) {
@@ -339,6 +338,9 @@ const registerGrpcEventHandlers = (window) => {
       return { success: true };
     } catch (error) {
       console.error('Error starting gRPC connection:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
       sendEvent('grpc:error', request.uid, collection.uid, { error: error.message });
       return { success: false, error: error.message };
     }

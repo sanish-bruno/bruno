@@ -13,6 +13,7 @@ import Auth from './Auth';
 import Script from './Script';
 import Test from './Tests';
 import Presets from './Presets';
+import Grpc from './Grpc';
 import StyledWrapper from './StyledWrapper';
 import Vars from './Vars/index';
 import StatusDot from 'components/StatusDot';
@@ -45,6 +46,7 @@ const CollectionSettings = ({ collection }) => {
 
   const proxyConfig = get(collection, 'brunoConfig.proxy', {});
   const clientCertConfig = get(collection, 'brunoConfig.clientCertificates.certs', []);
+  const grpcConfig = get(collection, 'brunoConfig.grpc', {});
 
 
   const onProxySettingsUpdate = (config) => {
@@ -122,6 +124,9 @@ const CollectionSettings = ({ collection }) => {
           />
         );
       }
+      case 'grpc': {
+        return <Grpc collection={collection} />;
+      }
     }
   };
 
@@ -167,6 +172,10 @@ const CollectionSettings = ({ collection }) => {
         <div className={getTabClassname('clientCert')} role="tab" onClick={() => setTab('clientCert')}>
           Client Certificates
           {clientCertConfig.length > 0 && <StatusDot />}
+        </div>
+        <div className={getTabClassname('grpc')} role="tab" onClick={() => setTab('grpc')}>
+          gRPC
+          {grpcConfig.protoFiles && grpcConfig.protoFiles.length > 0 && <StatusDot />}
         </div>
       </div>
       <section className="mt-4 h-full overflow-scroll">{getTabPanel(tab)}</section>

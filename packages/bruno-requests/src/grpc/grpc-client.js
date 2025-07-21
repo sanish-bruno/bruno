@@ -244,7 +244,7 @@ class GrpcClient {
     if (this.methods.has(path)) {
       return this.methods.get(path);
     }
-    throw new Error(`Method ${path} not found`);
+    throw new Error(`Method ${path} not found, please refresh the methods`);
   }
 
   /**
@@ -339,7 +339,13 @@ class GrpcClient {
     const credentials = this._getChannelCredentials({ url: request.url, rootCertificate, privateKey, certificateChain, passphrase, pfx, verifyOptions });
     const { host, path } = getParsedGrpcUrlObject(request.url);
     const methodPath = request.method;
-    const method = this._getMethodFromPath(methodPath);
+    let method;
+    try {
+      method = this._getMethodFromPath(methodPath);
+    } catch (error) {
+      console.error('Error getting method from path:', error);
+      throw error;
+    }
     const Client = makeGenericClientConstructor({});
     const client = new Client(host, credentials, channelOptions);
     if (!client) {
@@ -507,10 +513,10 @@ class GrpcClient {
   generateSampleMessage(methodPath, options = {}) {
     try {
       // Check if the method exists in the cache
-      if (!this.methods.has(methodPath)) {
+      if (!this.methods.has(methodPath)) {  
         return { 
           success: false, 
-          error: `Method ${methodPath} not found in cache` 
+          error: `Method ${methodPath} not found in cache, please refresh the methods` 
         };
       }
       
