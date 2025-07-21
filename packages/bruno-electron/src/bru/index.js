@@ -180,7 +180,11 @@ const createBruJson = (json) => {
   }
 
   // Common fields for all request types
-  bruJson.headers = _.get(json, 'request.headers', []); // Use headers for all types (including gRPC metadata)
+  if (type === 'grpc') {
+    bruJson.metadata = _.get(json, 'request.headers', []); // Use metadata for gRPC
+  } else {
+    bruJson.headers = _.get(json, 'request.headers', []); // Use headers for HTTP/GraphQL
+  }
   bruJson.auth = _.get(json, 'request.auth', {});
   bruJson.script = _.get(json, 'request.script', {});
   bruJson.vars = {
@@ -234,7 +238,7 @@ const bruToJson = (data, parsed = false) => {
       tags: _.get(json, 'meta.tags', []),
       request: {
         url: _.get(json, requestType === 'grpc-request' ? 'grpc.url' : 'http.url'),
-        headers: _.get(json, 'headers', []),
+        headers: requestType === 'grpc-request' ? _.get(json, 'metadata', []) : _.get(json, 'headers', []),
         auth: _.get(json, 'auth', {}),
         body: _.get(json, 'body', {}),
         script: _.get(json, 'script', {}),

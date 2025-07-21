@@ -73,9 +73,9 @@ const bruToJson = (bru) => {
       tags: _.get(json, 'meta.tags', []),
       request: {
         url: _.get(json, requestType === 'grpc-request' ? 'grpc.url' : 'http.url'),
+        headers: requestType === 'grpc-request' ? _.get(json, 'metadata', []) : _.get(json, 'headers', []),
         auth: _.get(json, 'auth', {}),
         params: _.get(json, 'params', []),
-        headers: _.get(json, 'headers', []),
         vars: _.get(json, 'vars', []),
         assertions: _.get(json, 'assertions', []),
         script: _.get(json, 'script', {}),

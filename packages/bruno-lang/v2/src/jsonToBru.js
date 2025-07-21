@@ -30,7 +30,7 @@ const getValueString = (value) => {
 };
 
 const jsonToBru = (json) => {
-  const { meta, http, grpc, params, headers, auth, body, script, tests, vars, assertions, settings, docs } = json;
+  const { meta, http, grpc, params, headers, metadata, auth, body, script, tests, vars, assertions, settings, docs } = json;
 
 
   let bru = '';
@@ -159,6 +159,27 @@ const jsonToBru = (json) => {
     if (disabled(headers).length) {
       bru += `\n${indentString(
         disabled(headers)
+          .map((item) => `~${item.name}: ${item.value}`)
+          .join('\n')
+      )}`;
+    }
+
+    bru += '\n}\n\n';
+  }
+
+  if (metadata && metadata.length) {
+    bru += 'metadata {';
+    if (enabled(metadata).length) {
+      bru += `\n${indentString(
+        enabled(metadata)
+          .map((item) => `${item.name}: ${item.value}`)
+          .join('\n')
+      )}`;
+    }
+
+    if (disabled(metadata).length) {
+      bru += `\n${indentString(
+        disabled(metadata)
           .map((item) => `~${item.name}: ${item.value}`)
           .join('\n')
       )}`;
