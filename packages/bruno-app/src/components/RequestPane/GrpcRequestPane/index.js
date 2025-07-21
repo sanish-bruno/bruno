@@ -99,7 +99,7 @@ const GrpcRequestPane = ({ item, collection, handleRun }) => {
       </div>
       <section
         className={classnames('flex w-full flex-1 h-full', {
-          'mt-5': !isMultipleContentTab
+          'mt-2': !isMultipleContentTab
         })}
       >
         <HeightBoundContainer>

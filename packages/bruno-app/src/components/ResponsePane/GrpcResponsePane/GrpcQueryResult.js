@@ -69,38 +69,54 @@ const GrpcQueryResult = ({ item, collection }) => {
         />
       )}
       {hasResponses && (
-        <div className="overflow-y-auto flex-1">
-          <Accordion defaultIndex={0}>
-            {reversedResponsesList.map((response, index) => {
-              // Calculate the original response number (for display purposes)
-              const originalIndex = responsesList.length - index - 1;
-              
-              return (
-                <Accordion.Item key={originalIndex} index={index}>
-                  <Accordion.Header index={index}>
-                    <div className="flex justify-between w-full">
-                      <div className="font-medium">
-                        Response {originalIndex + 1} {index === 0 ? "(Latest)" : ""}
+        <div className={`overflow-y-auto ${responsesList.length === 1 ? "flex-1" : ""}`}>
+          {responsesList.length === 1 ? (
+            // Single message - render directly without accordion
+            <div className="h-full">
+              <CodeEditor
+                collection={collection}
+                font={get(preferences, 'font.codeFont', 'default')}
+                fontSize={get(preferences, 'font.codeFontSize')}
+                theme={displayedTheme}
+                value={formatJSON(reversedResponsesList[0])}
+                mode="application/json"
+                readOnly={true}
+              />
+            </div>
+          ) : (
+            // Multiple messages - use accordion
+            <Accordion defaultIndex={0}>
+              {reversedResponsesList.map((response, index) => {
+                // Calculate the original response number (for display purposes)
+                const originalIndex = responsesList.length - index - 1;
+                
+                return (
+                  <Accordion.Item key={originalIndex} index={index}>
+                    <Accordion.Header index={index} style={{ padding: '8px 12px', minHeight: '40px' }}>
+                      <div className="flex justify-between w-full">
+                        <div className="font-medium">
+                          Response {originalIndex + 1} {index === 0 ? "(Latest)" : ""}
+                        </div>
                       </div>
-                    </div>
-                  </Accordion.Header>
-                  <Accordion.Content index={index} style={{ padding: '0px' }}>
-                      <div className="h-60">
-                        <CodeEditor
-                          collection={collection}
-                          font={get(preferences, 'font.codeFont', 'default')}
-                          fontSize={get(preferences, 'font.codeFontSize')}
-                          theme={displayedTheme}
-                          value={formatJSON(response)}
-                          mode="application/json"
-                          readOnly={true}
-                        />
-                      </div>
-                  </Accordion.Content>
-                </Accordion.Item>
-              );
-            })}
-          </Accordion>
+                    </Accordion.Header>
+                    <Accordion.Content index={index} style={{ padding: '0px' }}>
+                        <div className="h-60">
+                          <CodeEditor
+                            collection={collection}
+                            font={get(preferences, 'font.codeFont', 'default')}
+                            fontSize={get(preferences, 'font.codeFontSize')}
+                            theme={displayedTheme}
+                            value={formatJSON(response)}
+                            mode="application/json"
+                            readOnly={true}
+                          />
+                        </div>
+                    </Accordion.Content>
+                  </Accordion.Item>
+                );
+              })}
+            </Accordion>
+          )}
         </div>
       )}
       {hasError && !hasResponses && !showErrorMessage && (
