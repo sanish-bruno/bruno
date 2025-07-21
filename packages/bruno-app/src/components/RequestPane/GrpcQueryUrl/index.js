@@ -7,6 +7,7 @@ import { useTheme } from 'providers/Theme';
 import SingleLineEditor from 'components/SingleLineEditor/index';
 import { isMacOS } from 'utils/common/platform';
 import { getRelativePath } from 'utils/common/path';
+import useLocalStorage from 'hooks/useLocalStorage/index';
 import StyledWrapper from './StyledWrapper';
 import {
   IconX,
@@ -130,6 +131,9 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
   // Get collection proto files from presets
   const collectionProtoFiles = get(collection, 'brunoConfig.presets.protoFiles', []);
 
+  // Cache for gRPC methods fetched via reflection
+  const [reflectionCache, setReflectionCache] = useLocalStorage('bruno.grpc.reflectionCache', {});
+
   const fileExistsCache = useRef(new Map());
 
   const fileExists = useCallback((filePath) => {
@@ -229,8 +233,43 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
     
   };
 
-  const handleReflection = async (url) => {
+  const handleReflection = async (url, isManualRefresh = false) => {
     if (!url) return;
+
+    // Check if we have cached methods for this URL
+    const cachedMethods = reflectionCache[url];
+    if (!isManualRefresh && cachedMethods && !isLoadingMethods) {
+      setGrpcMethods(cachedMethods);
+      setProtoFilePath('');
+      const isDuplicateSave = !item.request.protoPath;
+      if (!isDuplicateSave) {
+        dispatch(updateRequestProtoPath({
+          protoPath: '',
+          itemUid: item.uid,
+          collectionUid: collection.uid
+        }));
+      }
+
+      if (cachedMethods && cachedMethods.length > 0) {
+        const haveSelectedMethod =
+          selectedGrpcMethod && cachedMethods.some((method) => method.path === selectedGrpcMethod.path);
+        if (!haveSelectedMethod) {
+          setSelectedGrpcMethod(null);
+          onMethodSelect({ path: '', type: '' });
+        } else if (selectedGrpcMethod) {
+          // Update the method type for the currently selected method to ensure it matches
+          const currentMethod = cachedMethods.find((method) => method.path === selectedGrpcMethod.path);
+          if (currentMethod) {
+            const methodType = currentMethod.type;
+            setSelectedGrpcMethod({
+              path: selectedGrpcMethod.path,
+              type: methodType
+            });
+          }
+        }
+        return;
+      }
+    }
 
     setIsLoadingMethods(true);
     try {
@@ -242,6 +281,11 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
         return;
       }
 
+      // Cache the methods for this URL
+      setReflectionCache(prevCache => ({
+        ...prevCache,
+        [url]: methods
+      }));
 
       setGrpcMethods(methods);
       setProtoFilePath('');
@@ -307,6 +351,8 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
       toast.error('Failed to generate grpcurl command');
     }
   };
+
+
 
   // Add a new function to group methods by service
   const groupMethodsByService = (methods) => {
@@ -545,7 +591,7 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
     dispatch(openCollectionSettings(collection.uid, 'presets'));
   };
 
-  const debouncedOnUrlChange = useCallback(debounce(onUrlChange, 250), [handleReflection, item, collection.uid, protoFilePath, url]);
+  const debouncedOnUrlChange = useCallback(debounce(onUrlChange, 250), [handleReflection, item, collection.uid, protoFilePath, url, reflectionCache]);
 
   useEffect(() => {
     fileExistsCache.current.clear();
@@ -776,7 +822,7 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
             className="infotip"
             onClick={(e) => {
               e.stopPropagation();
-              handleReflection(url);
+              handleReflection(url, true);
             }}
           >
             <IconRefresh
