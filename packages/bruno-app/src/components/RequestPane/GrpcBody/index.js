@@ -13,7 +13,7 @@ import ToolHint from 'components/ToolHint/index';
 import { toastError, toastSuccess } from 'utils/common/error';
 import { format, applyEdits } from 'jsonc-parser';
 
-const SingleGrpcMessage = ({ message, item, collection, index, methodType, isCollapsed, onToggleCollapse, handleRun }) => {
+const SingleGrpcMessage = ({ message, item, collection, index, methodType, isCollapsed, onToggleCollapse, handleRun, canClientSendMultipleMessages }) => {
     const dispatch = useDispatch();
     const { displayedTheme, theme } = useTheme();
     const preferences = useSelector((state) => state.app.preferences);
@@ -129,8 +129,10 @@ const SingleGrpcMessage = ({ message, item, collection, index, methodType, isCol
       }
     };
 
+    const getContainerHeight = (canClientSendMultipleMessages && body.grpc.length > 1) ? "h-80" : "h-full"
+
     return (
-    <div className="flex flex-col mb-3 border border-neutral-200 dark:border-neutral-800 rounded-md overflow-hidden">
+    <div className={`flex flex-col mb-3 border border-neutral-200 dark:border-neutral-800 rounded-md overflow-hidden ${getContainerHeight} relative`}>
       <div 
         className="grpc-message-header flex items-center justify-between px-3 py-2 bg-neutral-100 dark:bg-neutral-700 cursor-pointer"
         onClick={onToggleCollapse}
@@ -191,7 +193,7 @@ const SingleGrpcMessage = ({ message, item, collection, index, methodType, isCol
       </div>
       
       {!isCollapsed && (
-        <div className="flex h-60 relative">
+        <div className={`flex ${body.grpc.length === 1 || !canClientSendMultipleMessages ? "h-full" : "h-80"} relative`}>
           <CodeEditor
             collection={collection} 
             theme={displayedTheme}
@@ -283,7 +285,7 @@ const GrpcBody = ({ item, collection, handleRun }) => {
       <div 
         ref={messagesContainerRef}
         id="grpc-messages-container" 
-        className="flex-1 pb-16"
+        className={`flex-1 ${body.grpc.length === 1 || !canClientSendMultipleMessages ? "h-full" : "overflow-y-auto"} ${canClientSendMultipleMessages && "pb-16"}`}
       >
         {body.grpc
           .filter((_, index) => canClientSendMultipleMessages || index === 0)
@@ -298,6 +300,7 @@ const GrpcBody = ({ item, collection, handleRun }) => {
             isCollapsed={collapsedMessages.includes(index)}
             onToggleCollapse={() => toggleMessageCollapse(index)}
             handleRun={handleRun}
+            canClientSendMultipleMessages={canClientSendMultipleMessages}
           />
         ))}
       </div>

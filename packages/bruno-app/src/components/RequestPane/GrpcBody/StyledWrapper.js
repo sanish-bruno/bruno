@@ -5,7 +5,7 @@ const Wrapper = styled.div`
   flex-direction: column;
   width: 100%;
   flex: 1;
-  height: 100%;
+  /* height: 100%; */
   position: relative;
 
   .grpc-message-header {
@@ -30,8 +30,7 @@ const Wrapper = styled.div`
   }
 
   #grpc-messages-container {
-    max-height: calc(100vh - 250px);
-    overflow-y: auto;
+    /* height: 100%; */
     position: relative;
   }
   

@@ -74,6 +74,10 @@ const GrpcRequestPane = ({ item, collection, handleRun }) => {
   const activeHeadersLength = headers.filter((header) => header.enabled).length;
   const grpcMessagesCount = body?.grpc?.length || 0;
 
+  // Determine if this is a client streaming request
+  const request = item.draft ? item.draft.request : item.request;
+  const isClientStreaming = request.methodType === 'client-streaming' || request.methodType === 'bidi-streaming';
+
   useEffect(() => {
       selectTab('body');
   }, []);
@@ -83,7 +87,13 @@ const GrpcRequestPane = ({ item, collection, handleRun }) => {
       <div className="flex flex-wrap items-center tabs" role="tablist">
         <div className={getTabClassname('body')} role="tab" onClick={() => selectTab('body')}>
           Message
-          {grpcMessagesCount > 0 && <sup className="ml-[.125rem] font-medium">{grpcMessagesCount}</sup>}
+          {grpcMessagesCount > 0 && (
+            isClientStreaming ? (
+              <sup className="ml-[.125rem] font-medium">{grpcMessagesCount}</sup>
+            ) : (
+              <StatusDot />
+            )
+          )}
         </div>
         <div className={getTabClassname('headers')} role="tab" onClick={() => selectTab('headers')}>
           Metadata
