@@ -6,7 +6,7 @@ const { cloneDeep, each, get } = require('lodash');
 const interpolateVars = require('./interpolate-vars');
 const { preferencesUtil } = require('../../store/preferences');
 const { getCertsAndProxyConfig } = require('./cert-utils');
-const { getEnvVars, getTreePathFromCollectionToItem, mergeHeaders, mergeScripts, mergeVars, mergeAuth } = require('../../utils/collection');
+const { getEnvVars, getTreePathFromCollectionToItem, mergeHeaders, mergeScripts, mergeVars, mergeAuth, getFormattedCollectionOauth2Credentials } = require('../../utils/collection');
 const { getProcessEnvVars } = require('../../store/process-env');
 const { getOAuth2TokenUsingPasswordCredentials, getOAuth2TokenUsingClientCredentials, getOAuth2TokenUsingAuthorizationCode } = require('../../utils/oauth2');
 const { interpolateString } = require('./interpolate-string');
@@ -144,6 +144,8 @@ const prepareRequest = async (item, collection, environment, runtimeVariables, c
     mergeHeaders(collection, request, requestTreePath);
     mergeScripts(collection, request, requestTreePath, scriptFlow);
     mergeVars(collection, request, requestTreePath);
+    request.globalEnvironmentVariables = collection?.globalEnvironmentVariables;
+    request.oauth2CredentialVariables = getFormattedCollectionOauth2Credentials({ oauth2Credentials: collection?.oauth2Credentials });
   }
 
   each(get(request, 'headers', []), (h) => {
@@ -170,6 +172,13 @@ const prepareRequest = async (item, collection, environment, runtimeVariables, c
     runtimeVariables,
     body: request.body,
     protoPath: request.protoPath,
+    // Add variable properties for interpolation
+    vars: request.vars,
+    collectionVariables: request.collectionVariables,
+    folderVariables: request.folderVariables,
+    requestVariables: request.requestVariables,
+    globalEnvironmentVariables: request.globalEnvironmentVariables,
+    oauth2CredentialVariables: request.oauth2CredentialVariables,
   }
 
   grpcRequest = setGrpcAuthHeaders(grpcRequest, request, collectionRoot);
