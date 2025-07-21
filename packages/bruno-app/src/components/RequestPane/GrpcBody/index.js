@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { get } from 'lodash';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from 'providers/Theme';
@@ -215,10 +215,19 @@ const GrpcBody = ({ item, collection, handleRun }) => {
   const isVerticalLayout = preferences?.layout?.responsePaneOrientation === 'vertical';
   const dispatch = useDispatch();
   const [collapsedMessages, setCollapsedMessages] = useState([]);
+  const messagesContainerRef = useRef(null);
   const body = item.draft ? get(item, 'draft.request.body') : get(item, 'request.body');
   
   const methodType = item.draft ? get(item, 'draft.request.methodType') : get(item, 'request.methodType');
   const canClientSendMultipleMessages = methodType === 'client-streaming' || methodType === 'bidi-streaming';
+  
+  // Auto-scroll to the latest message when messages are added
+  useEffect(() => {
+    if (messagesContainerRef.current && body?.grpc?.length > 0) {
+      const container = messagesContainerRef.current;
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [body?.grpc?.length]);
   
   const toggleMessageCollapse = (index) => {
     setCollapsedMessages(prev => {
@@ -272,6 +281,7 @@ const GrpcBody = ({ item, collection, handleRun }) => {
   return (
     <StyledWrapper isVerticalLayout={isVerticalLayout}>
       <div 
+        ref={messagesContainerRef}
         id="grpc-messages-container" 
         className="flex-1 pb-16"
       >

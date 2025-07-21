@@ -72,6 +72,7 @@ const GrpcRequestPane = ({ item, collection, handleRun }) => {
   const auth = getPropertyFromDraftOrRequest('request.auth');
 
   const activeHeadersLength = headers.filter((header) => header.enabled).length;
+  const grpcMessagesCount = body?.grpc?.length || 0;
 
   useEffect(() => {
       selectTab('body');
@@ -82,7 +83,7 @@ const GrpcRequestPane = ({ item, collection, handleRun }) => {
       <div className="flex flex-wrap items-center tabs" role="tablist">
         <div className={getTabClassname('body')} role="tab" onClick={() => selectTab('body')}>
           Message
-          {body.mode !== 'none' && <StatusDot type="default" />}
+          {grpcMessagesCount > 0 && <sup className="ml-[.125rem] font-medium">{grpcMessagesCount}</sup>}
         </div>
         <div className={getTabClassname('headers')} role="tab" onClick={() => selectTab('headers')}>
           Metadata
