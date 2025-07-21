@@ -6,7 +6,7 @@ import BearerAuth from '../../Auth/BearerAuth';
 import BasicAuth from '../../Auth/BasicAuth';
 import ApiKeyAuth from '../../Auth/ApiKeyAuth';
 import OAuth2 from '../../Auth/OAuth2/index';
-import StyledWrapper from '../../Auth/StyledWrapper';
+import StyledWrapper from './StyledWrapper';
 import { humanizeRequestAuthMode } from 'utils/collections';
 import { findItemInCollection, findParentItemInCollection } from 'utils/collections/index';
 import { updateRequestAuthMode, updateAuth } from 'providers/ReduxStore/slices/collections';

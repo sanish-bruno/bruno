@@ -275,19 +275,6 @@ const GrpcBody = ({ item, collection, handleRun }) => {
         id="grpc-messages-container" 
         className="flex-1 pb-16"
       >
-       {canClientSendMultipleMessages && isVerticalLayout && (
-        <div className="mb-2 ml-auto">
-          <ToolHint text="Add a new gRPC message to the request" toolhintId="add-msg-fixed">
-            <button 
-              onClick={addNewMessage}
-              className="add-message-btn flex items-center justify-center gap-2 py-2 px-4 rounded-md border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors shadow-md"
-            >
-              <IconPlus size={16} strokeWidth={1.5} className="text-neutral-700 dark:text-neutral-300" />
-              <span className="font-medium text-sm text-neutral-700 dark:text-neutral-300">Add Message</span>
-            </button>
-          </ToolHint>
-        </div>
-      )}
         {body.grpc
           .filter((_, index) => canClientSendMultipleMessages || index === 0)
           .map((message, index) => (
@@ -305,7 +292,7 @@ const GrpcBody = ({ item, collection, handleRun }) => {
         ))}
       </div>
       
-      {canClientSendMultipleMessages && !isVerticalLayout && (
+      {canClientSendMultipleMessages && (
         <div className="add-message-btn-container">
           <ToolHint text="Add a new gRPC message to the request" toolhintId="add-msg-fixed">
             <button 

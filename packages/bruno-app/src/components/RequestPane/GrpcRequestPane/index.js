@@ -6,6 +6,7 @@ import RequestHeaders from 'components/RequestPane/RequestHeaders';
 import GrpcBody from 'components/RequestPane/GrpcBody';
 import GrpcAuth from './GrpcAuth/index';
 import StatusDot from 'components/StatusDot/index';
+import HeightBoundContainer from 'ui/HeightBoundContainer';
 import StyledWrapper from './StyledWrapper';
 import { find, get } from 'lodash';
 import Documentation from 'components/Documentation/index';
@@ -101,7 +102,9 @@ const GrpcRequestPane = ({ item, collection, handleRun }) => {
           'mt-5': !isMultipleContentTab
         })}
       >
-        {getTabPanel(focusedTab.requestPaneTab)}
+        <HeightBoundContainer>
+          {getTabPanel(focusedTab.requestPaneTab)}
+        </HeightBoundContainer>
       </section>
     </StyledWrapper>
   );
