@@ -122,7 +122,7 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
   const [protoDropdownOpen, setProtoDropdownOpen] = useState(false);
   const methodDropdownRef = useRef();
   const protoDropdownRef = useRef();
-  const fetchMethodsRef = useRef();
+  const haveFetchedMethodsRef = useRef(false);
 
   const [showGrpcurlModal, setShowGrpcurlModal] = useState(false);
   const [grpcurlCommand, setGrpcurlCommand] = useState('');
@@ -552,10 +552,10 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
   }, [collection.pathname]);
 
   useEffect(() => {
-    if(fetchMethodsRef.current) {
+    if(haveFetchedMethodsRef.current) {
       return;
     }
-    fetchMethodsRef.current = true;
+    haveFetchedMethodsRef.current = true;
 
     if(protoFilePath) {
       loadMethodsFromProtoFile(protoFilePath);
@@ -564,7 +564,7 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
     if (!url) return;
     handleReflection(url);
 
-  }, [url, protoFilePath]);
+  }, []);
 
 
   return (

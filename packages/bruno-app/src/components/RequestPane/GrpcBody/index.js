@@ -129,7 +129,7 @@ const SingleGrpcMessage = ({ message, item, collection, index, methodType, isCol
       }
     };
 
-    const getContainerHeight = (canClientSendMultipleMessages && body.grpc.length > 1) ? "h-80" : "h-full"
+    const getContainerHeight = (canClientSendMultipleMessages && body.grpc.length > 1) ? `${isCollapsed ? "" : "h-80"}` : "h-full"
 
     return (
     <div className={`flex flex-col mb-3 border border-neutral-200 dark:border-neutral-800 rounded-md overflow-hidden ${getContainerHeight} relative`}>
