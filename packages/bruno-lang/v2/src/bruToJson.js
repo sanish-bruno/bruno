@@ -31,7 +31,7 @@ const { safeParseJson, outdentString } = require('./utils');
 const grammar = ohm.grammar(`Bru {
   BruFile = (meta | http | grpc | query | params | headers | auths | bodies | varsandassert | script | tests | settings | docs)*
   auths = authawsv4 | authbasic | authbearer | authdigest | authNTLM | authOAuth2 | authwsse | authapikey
-  bodies = bodyjson | bodytext | bodyxml | bodysparql | bodygraphql | bodygraphqlvars | bodyforms | body | bodygrpcmessage
+  bodies = bodyjson | bodytext | bodyxml | bodysparql | bodygraphql | bodygraphqlvars | bodyforms | body | bodygrpc
   bodyforms = bodyformurlencoded | bodymultipart | bodyfile
   params = paramspath | paramsquery
 
@@ -116,7 +116,7 @@ const grammar = ohm.grammar(`Bru {
   bodysparql = "body:sparql" st* "{" nl* textblock tagend
   bodygraphql = "body:graphql" st* "{" nl* textblock tagend
   bodygraphqlvars = "body:graphql:vars" st* "{" nl* textblock tagend
-  bodygrpcmessage = "body:grpc:message" dictionary
+  bodygrpc = "body:grpc" dictionary
 
   bodyformurlencoded = "body:form-urlencoded" dictionary
   bodymultipart = "body:multipart-form" dictionary
@@ -835,7 +835,7 @@ const sem = grammar.createSemantics().addAttribute('ast', {
       docs: outdentString(textblock.sourceString)
     };
   },
-  bodygrpcmessage(_1, dictionary) {
+  bodygrpc(_1, dictionary) {
     const pairs = mapPairListToKeyValPairs(dictionary.ast, false);
     const namePair = _.find(pairs, { name: 'name' });
     const contentPair = _.find(pairs, { name: 'content' });
