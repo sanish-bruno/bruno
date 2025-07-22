@@ -9,6 +9,7 @@ import { isMacOS } from 'utils/common/platform';
 import { getRelativePath } from 'utils/common/path';
 import useLocalStorage from 'hooks/useLocalStorage/index';
 import StyledWrapper from './StyledWrapper';
+import ToggleSwitch from 'components/ToggleSwitch/index';
 import {
   IconX,
   IconCheck,
@@ -127,12 +128,16 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
 
   const [showGrpcurlModal, setShowGrpcurlModal] = useState(false);
   const [grpcurlCommand, setGrpcurlCommand] = useState('');
+  const [isReflectionMode, setIsReflectionMode] = useState(false);
 
   // Get collection proto files from presets
   const collectionProtoFiles = get(collection, 'brunoConfig.grpc.protoFiles', []);
 
   // Cache for gRPC methods fetched via reflection
   const [reflectionCache, setReflectionCache] = useLocalStorage('bruno.grpc.reflectionCache', {});
+
+  // Cache for gRPC methods loaded from proto files
+  const [protofileCache, setProtofileCache] = useLocalStorage('bruno.grpc.protofileCache', {});
 
   const fileExistsCache = useRef(new Map());
 
@@ -206,6 +211,7 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
     }
 
     if(!protoFilePath && value) {
+      setIsReflectionMode(true);
       handleReflection(finalUrl);
     }
   };
@@ -241,6 +247,7 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
     if (!isManualRefresh && cachedMethods && !isLoadingMethods) {
       setGrpcMethods(cachedMethods);
       setProtoFilePath('');
+      setIsReflectionMode(true);
       const isDuplicateSave = !item.request.protoPath;
       if (!isDuplicateSave) {
         dispatch(updateRequestProtoPath({
@@ -289,6 +296,7 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
 
       setGrpcMethods(methods);
       setProtoFilePath('');
+      setIsReflectionMode(true);
       const isDuplicateSave = !item.request.protoPath;
       if (!isDuplicateSave) {
         dispatch(updateRequestProtoPath({
@@ -409,9 +417,12 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
   const ProtoFileDropdownIcon = forwardRef((props, ref) => {
     return (
       <div ref={ref} className="flex items-center justify-center cursor-pointer select-none">
-        <IconFile size={20} strokeWidth={1.5} className="mr-1 text-neutral-400" />
+        {isReflectionMode ? (<></>
+        ) : (
+          <IconFile size={20} strokeWidth={1.5} className="mr-1 text-neutral-400" />
+        )}
         <span className="text-xs dark:text-neutral-300 text-neutral-700 text-nowrap">
-          {protoFilePath ? getBasename(protoFilePath) : 'Select Proto File'}
+          {isReflectionMode ? 'Using Reflection' : (protoFilePath ? getBasename(protoFilePath) : 'Select Proto File')}
         </span>
         <IconChevronDown className="caret ml-1" size={14} strokeWidth={2} />
       </div>
@@ -483,6 +494,7 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
     }
 
     setProtoFilePath(protoFile.path);
+    setIsReflectionMode(false);
 
     dispatch(updateRequestProtoPath({
       protoPath: protoFile.path,
@@ -496,6 +508,7 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
 
   const handleResetProtoFile = () => {
     setProtoFilePath('');
+    setIsReflectionMode(true);
     const isDuplicateSave = !item.request.protoPath;
     if (!isDuplicateSave) {
       dispatch(updateRequestProtoPath({
@@ -511,9 +524,39 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
     toast.success('Proto file reset');
   };
 
-  const loadMethodsFromProtoFile = async (filePath) => {
-    if (!filePath) return;
+  const loadMethodsFromProtoFile = async (filePath, isManualRefresh = false) => {
+    if (!filePath) {
+      toast.error('No proto file selected');
+      return;
+    };
     const absolutePath = window?.ipcRenderer?.resolvePath(filePath, collection.pathname);
+
+    // Check if we have cached methods for this proto file
+    const cachedMethods = protofileCache[absolutePath];
+    if (cachedMethods && !isLoadingMethods && !isManualRefresh) {
+      setGrpcMethods(cachedMethods);
+      
+      if (cachedMethods && cachedMethods.length > 0) {
+        // Check if currently selected method is still valid
+        const haveSelectedMethod =
+          selectedGrpcMethod && cachedMethods.some((method) => method.path === selectedGrpcMethod.path);
+        if (!haveSelectedMethod) {
+          setSelectedGrpcMethod(null);
+          onMethodSelect({ path: '', type: '' });
+        } else {
+          // Update the method type for the currently selected method to ensure it matches
+          const currentMethod = cachedMethods.find((method) => method.path === selectedGrpcMethod.path);
+          if (currentMethod) {
+            const methodType = currentMethod.type;
+            setSelectedGrpcMethod({
+              path: selectedGrpcMethod.path,
+              type: methodType
+            });
+          }
+        }
+      }
+      return;
+    }
 
     setIsLoadingMethods(true);
     try {
@@ -524,6 +567,12 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
         toast.error(`Failed to load gRPC methods: ${error.message || 'Unknown error'}`);
         return;
       }
+
+      // Cache the methods for this proto file
+      setProtofileCache(prevCache => ({
+        ...prevCache,
+        [absolutePath]: methods
+      }));
 
       setGrpcMethods(methods);
 
@@ -569,6 +618,7 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
           const filePath = filePaths[0];
           const relativePath = getRelativePath(filePath, collection.pathname);
           setProtoFilePath(relativePath);
+          setIsReflectionMode(false);
     
           dispatch(updateRequestProtoPath({
             protoPath: relativePath,
@@ -591,7 +641,7 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
     dispatch(openCollectionSettings(collection.uid, 'grpc'));
   };
 
-  const debouncedOnUrlChange = useCallback(debounce(onUrlChange, 1000), [handleReflection, item, collection.uid, protoFilePath, url, reflectionCache]);
+  const debouncedOnUrlChange = useCallback(debounce(onUrlChange, 1000), [handleReflection, item, collection.uid, protoFilePath, url, reflectionCache, protofileCache]);
 
   useEffect(() => {
     fileExistsCache.current.clear();
@@ -604,10 +654,12 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
     haveFetchedMethodsRef.current = true;
 
     if(protoFilePath) {
+      setIsReflectionMode(false);
       loadMethodsFromProtoFile(protoFilePath);
       return;
     }
     if (!url) return;
+    setIsReflectionMode(true);
     handleReflection(url);
 
   }, []);
@@ -680,140 +732,192 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
             >
               <div className="proto-dropdown-menu max-h-fit overflow-y-auto">
                 <div className="px-3 py-2 border-b border-neutral-200 dark:border-neutral-700">
-                  <h3 className="text-sm font-medium">Select Proto File</h3>
+                  <h3 className="text-sm font-medium">{isReflectionMode ? "Using Reflection" : "Select Proto File"}</h3>
                 </div>
 
-                {collectionProtoFiles && collectionProtoFiles.length > 0 && (
-                  <div className="px-3 py-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="text-xs text-neutral-500">From Collection Settings</div>
-                      <button 
-                        onClick={(e) => {
+                {/* Mode Toggle */}
+                <div className="px-3 py-2 border-b border-neutral-200 dark:border-neutral-700">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Mode</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs ${!isReflectionMode ? 'text-indigo-600 dark:text-indigo-400 font-medium' : 'text-neutral-500'}`}>
+                        Proto File
+                      </span>
+                      <ToggleSwitch
+                        isOn={isReflectionMode}
+                        handleToggle={(e) => {
                           e.stopPropagation();
-                          handleOpenCollectionGrpc();
+                          setIsReflectionMode(!isReflectionMode);
+                          if (!isReflectionMode) {
+                            // Switching to reflection mode
+                            setProtoFilePath('');
+                            dispatch(updateRequestProtoPath({
+                              protoPath: '',
+                              itemUid: item.uid,
+                              collectionUid: collection.uid
+                            }));
+                            if (url) {
+                              handleReflection(url);
+                            }
+                          } else {
+                            // Switching to proto file mode
+                            setGrpcMethods([]);
+                            setSelectedGrpcMethod(null);
+                            onMethodSelect({ path: '', type: '' });
+                          }
                         }}
-                        className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
-                      >
-                        <IconSettings size={16} strokeWidth={1.5} />
-                      </button>
+                        size="2xs"
+                      />
+                      <span className={`text-xs ${isReflectionMode ? 'text-indigo-600 dark:text-indigo-400 font-medium' : 'text-neutral-500'}`}>
+                        Reflection
+                      </span>
                     </div>
+                  </div>
+                </div>
 
-                    {invalidProtoFiles.length > 0 && (
-                      <div className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-xs text-red-600 dark:text-red-400">
-                        <p className="flex items-center">
-                          <IconAlertCircle size={16} strokeWidth={1.5} className="mr-1" />
-                          Some proto files could not be found. <button 
+                {!isReflectionMode && (
+                  <>
+                    {collectionProtoFiles && collectionProtoFiles.length > 0 && (
+                      <div className="px-3 py-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="text-xs text-neutral-500">From Collection Settings</div>
+                          <button 
                             onClick={(e) => {
                               e.stopPropagation();
                               handleOpenCollectionGrpc();
                             }}
-                            className="text-red-600 dark:text-red-400 underline hover:text-red-700 dark:hover:text-red-300 ml-1"
+                            className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
                           >
-                            Manage proto files
+                            <IconSettings size={16} strokeWidth={1.5} />
                           </button>
-                        </p>
-                      </div>
-                    )}
+                        </div>
 
-                    <div className="space-y-1 max-h-60 overflow-y-auto">
-                      {collectionProtoFilesExistence.map((protoFile, index) => {
-                        const absolutePath = window?.ipcRenderer?.resolvePath(protoFile.path, collection.pathname);
-                        const isSelected = protoFilePath === absolutePath;
-                        const isInvalid = !fileExists(absolutePath);
+                        {invalidProtoFiles.length > 0 && (
+                          <div className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-xs text-red-600 dark:text-red-400">
+                            <p className="flex items-center">
+                              <IconAlertCircle size={16} strokeWidth={1.5} className="mr-1" />
+                              Some proto files could not be found. <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenCollectionGrpc();
+                                }}
+                                className="text-red-600 dark:text-red-400 underline hover:text-red-700 dark:hover:text-red-300 ml-1"
+                              >
+                                Manage proto files
+                              </button>
+                            </p>
+                          </div>
+                        )}
 
-                        return (
-                          <div
-                            key={`collection-proto-${index}`}
-                            className={`dropdown-item py-1 px-2 ${
-                              isSelected ? 'bg-indigo-100 dark:bg-indigo-900' : ''
-                            } ${isInvalid ? 'opacity-60' : ''}`}
-                            onClick={() => !isInvalid && handleSelectCollectionProtoFile(protoFile)}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center">
-                                <IconFile size={20} strokeWidth={1.5} className="mr-2 text-neutral-500" />
-                                <div className="flex flex-col">
-                                  <div className="text-sm flex items-center">
-                                    {getBasename(protoFile.path)}
-                                    {isInvalid && (
-                                      <span className="text-red-500 dark:text-red-400 text-xs flex items-center">
-                                        <IconAlertCircle size={16} strokeWidth={1.5} className="mx-1 " />
-                                      </span>
-                                    )}
+                        <div className="space-y-1 max-h-60 overflow-y-auto">
+                          {collectionProtoFilesExistence.map((protoFile, index) => {
+                            const absolutePath = window?.ipcRenderer?.resolvePath(protoFile.path, collection.pathname);
+                            const isSelected = protoFilePath === absolutePath;
+                            const isInvalid = !fileExists(absolutePath);
+
+                            return (
+                              <div
+                                key={`collection-proto-${index}`}
+                                className={`dropdown-item py-1 px-2 ${
+                                  isSelected ? 'bg-indigo-100 dark:bg-indigo-900' : ''
+                                } ${isInvalid ? 'opacity-60' : ''}`}
+                                onClick={() => !isInvalid && handleSelectCollectionProtoFile(protoFile)}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center">
+                                    <IconFile size={20} strokeWidth={1.5} className="mr-2 text-neutral-500" />
+                                    <div className="flex flex-col">
+                                      <div className="text-sm flex items-center">
+                                        {getBasename(protoFile.path)}
+                                        {isInvalid && (
+                                          <span className="text-red-500 dark:text-red-400 text-xs flex items-center">
+                                            <IconAlertCircle size={16} strokeWidth={1.5} className="mx-1 " />
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-xs text-neutral-500">{protoFile.path}</div>
+                                    </div>
                                   </div>
-                                  <div className="text-xs text-neutral-500">{protoFile.path}</div>
                                 </div>
                               </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {collectionProtoFiles && collectionProtoFiles.length > 0 && (
-                  <div className="border-t border-neutral-200 dark:border-neutral-700 my-1"></div>
-                )}
-
-                {protoFilePath && !collectionProtoFilesExistence.some(pf => 
-                  window?.ipcRenderer?.resolvePath(pf.path, collection.pathname) === protoFilePath
-                ) && (
-                  <div className="px-3 py-2">
-                    <div className="text-xs text-neutral-500 mb-1">Current Proto File</div>
-                    {!currentProtoFileExists && (
-                      <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-xs text-red-600 dark:text-red-400">
-                        <p className="flex items-center">
-                          <IconAlertCircle size={16} strokeWidth={1.5} className="mr-1" />
-                          Selected proto file not found. Please select a valid proto file from collection settings or browse for a new one.
-                        </p>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
-                    <div className={`dropdown-item py-1 px-2 bg-indigo-100 dark:bg-indigo-900 ${!currentProtoFileExists ? 'opacity-60' : ''}`}>
-                      <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center">
-                          <IconFile size={16} strokeWidth={1.5} className="mr-2 text-neutral-500" />
-                          <div className="flex flex-col">
-                            <div className="text-sm flex items-center">
-                              {getBasename(protoFilePath)}
-                              {!currentProtoFileExists && (
-                                <span className="text-red-500 dark:text-red-400 text-xs flex items-center ml-1">
-                                  <IconAlertCircle size={16} strokeWidth={1.5} />
-                                </span>
-                              )}
+
+                    {collectionProtoFiles && collectionProtoFiles.length > 0 && (
+                      <div className="border-t border-neutral-200 dark:border-neutral-700 my-1"></div>
+                    )}
+
+                    {protoFilePath && !collectionProtoFilesExistence.some(pf => 
+                      window?.ipcRenderer?.resolvePath(pf.path, collection.pathname) === protoFilePath
+                    ) && (
+                      <div className="px-3 py-2">
+                        <div className="text-xs text-neutral-500 mb-1">Current Proto File</div>
+                        {!currentProtoFileExists && (
+                          <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-xs text-red-600 dark:text-red-400">
+                            <p className="flex items-center">
+                              <IconAlertCircle size={16} strokeWidth={1.5} className="mr-1" />
+                              Selected proto file not found. Please select a valid proto file from collection settings or browse for a new one.
+                            </p>
+                          </div>
+                        )}
+                        <div className={`dropdown-item py-1 px-2 bg-indigo-100 dark:bg-indigo-900 ${!currentProtoFileExists ? 'opacity-60' : ''}`}>
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center">
+                              <IconFile size={16} strokeWidth={1.5} className="mr-2 text-neutral-500" />
+                              <div className="flex flex-col">
+                                <div className="text-sm flex items-center">
+                                  {getBasename(protoFilePath)}
+                                  {!currentProtoFileExists && (
+                                    <span className="text-red-500 dark:text-red-400 text-xs flex items-center ml-1">
+                                      <IconAlertCircle size={16} strokeWidth={1.5} />
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-neutral-500">{protoFilePath}</div>
+                              </div>
                             </div>
-                            <div className="text-xs text-neutral-500">{protoFilePath}</div>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleResetProtoFile();
+                                }}
+                              >
+                                <IconX size={16} strokeWidth={1.5} />
+                              </button>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button 
-                            className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleResetProtoFile();
-                            }}
-                          >
-                            <IconX size={16} strokeWidth={1.5} />
-                          </button>
-                        </div>
+                     
                       </div>
+                    )}
+
+                    <div className="px-3 py-2">
+                      <button
+                        className="btn btn-sm btn-secondary w-full flex items-center justify-center"
+                        onClick={(e) => {
+                          handleSelectProtoFile(e);
+                          setProtoDropdownOpen(false);
+                        }}
+                      >
+                        <IconFile size={16} strokeWidth={1.5} className="mr-1" />
+                        Browse for Proto File
+                      </button>
                     </div>
-                 
-                  </div>
+                  </>
                 )}
 
-                <div className="px-3 py-2">
-                  <button
-                    className="btn btn-sm btn-secondary w-full flex items-center justify-center"
-                    onClick={(e) => {
-                      handleSelectProtoFile(e);
-                      setProtoDropdownOpen(false);
-                    }}
-                  >
-                    <IconFile size={16} strokeWidth={1.5} className="mr-1" />
-                    Browse for Proto File
-                  </button>
-                </div>
+                {isReflectionMode && (
+                  <div className="px-3 py-2">
+                    <div className="text-sm text-neutral-600 dark:text-neutral-400 mb-2">
+                      Using server reflection to discover gRPC methods.
+                    </div>
+                  </div>
+                )}
               </div>
             </Dropdown>
           </div>
@@ -822,7 +926,13 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
             className="infotip"
             onClick={(e) => {
               e.stopPropagation();
-              handleReflection(url, true);
+              if (isReflectionMode) {
+                handleReflection(url, true);
+              } else if (protoFilePath) {
+                loadMethodsFromProtoFile(protoFilePath, true);
+              } else {
+                toast.error('No proto file selected');
+              }
             }}
           >
             <IconRefresh
@@ -831,7 +941,9 @@ const GrpcQueryUrl = ({ item, collection, handleRun }) => {
               size={22}
               className={`${isLoadingMethods ? 'animate-spin' : 'cursor-pointer'}`}
             />
-            <span className="infotiptext text-xs">Refresh server reflection</span>
+            <span className="infotiptext text-xs">
+              {isReflectionMode ? 'Refresh server reflection' : 'Refresh proto file methods'}
+            </span>
           </div>
 
           <div
