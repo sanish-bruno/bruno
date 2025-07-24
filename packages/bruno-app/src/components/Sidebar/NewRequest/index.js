@@ -21,14 +21,16 @@ import Help from 'components/Help';
 import StyledWrapper from './StyledWrapper';
 import SingleLineEditor from 'components/SingleLineEditor/index';
 import { useTheme } from 'styled-components';
+import { useBetaFeature, BETA_FEATURES } from 'utils/beta-features';
 
 const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
   const dispatch = useDispatch();
   const inputRef = useRef();
 
   const storedTheme = useTheme();
+  const isGrpcEnabled = useBetaFeature(BETA_FEATURES.GRPC);
 
-  const collection = useSelector(state => state.collections.collections?.find(c => c.uid === collectionUid));
+  const collection = useSelector((state) => state.collections.collections?.find((c) => c.uid === collectionUid));
   const {
     brunoConfig: { presets: collectionPresets = {} }
   } = collection;
@@ -44,7 +46,7 @@ const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
   const Icon = forwardRef((props, ref) => {
     return (
       <div ref={ref} className="flex items-center justify-end auth-type-label select-none">
-        {curlRequestTypeDetected === 'http-request' ? "HTTP" : "GraphQL"}
+        {curlRequestTypeDetected === 'http-request' ? 'HTTP' : 'GraphQL'}
         <IconCaretDown className="caret ml-1 mr-1" size={14} strokeWidth={2} />
       </div>
     );
@@ -90,6 +92,10 @@ const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
     }
 
     if (collectionPresets.requestType === 'grpc') {
+      // If gRPC is disabled in beta features, fall back to http-request
+      if (!isGrpcEnabled) {
+        return 'http-request';
+      }
       return 'grpc-request';
     }
 
@@ -117,11 +123,15 @@ const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
         .min(1, 'must be at least 1 character')
         .max(255, 'must be 255 characters or less')
         .required('filename is required')
-        .test('is-valid-filename', function(value) {
+        .test('is-valid-filename', function (value) {
           const isValid = validateName(value);
           return isValid ? true : this.createError({ message: validateNameError(value) });
         })
-        .test('not-reserved', `The file names "collection" and "folder" are reserved in bruno`, value => !['collection', 'folder'].includes(value)),
+        .test(
+          'not-reserved',
+          `The file names "collection" and "folder" are reserved in bruno`,
+          (value) => !['collection', 'folder'].includes(value)
+        ),
       curlCommand: Yup.string().when('requestType', {
         is: (requestType) => requestType === 'from-curl',
         then: Yup.string()
@@ -145,14 +155,14 @@ const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
             requestType: values.requestType,
             requestUrl: values.requestUrl,
             collectionUid: collection.uid,
-            itemUid: item ? item.uid : null,
+            itemUid: item ? item.uid : null
           })
         )
-        .then(() => {
-          toast.success('New request created!');
-          onClose()
-        })
-        .catch((err) => toast.error(err ? err.message : 'An error occurred while adding the request'));
+          .then(() => {
+            toast.success('New request created!');
+            onClose();
+          })
+          .catch((err) => toast.error(err ? err.message : 'An error occurred while adding the request'));
 
         // will need to handle import from grpcurl command when we support it, now it is just for creating new requests
       } else if (isEphemeral) {
@@ -200,7 +210,7 @@ const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
         )
           .then(() => {
             toast.success('New request created!');
-            onClose()
+            onClose();
           })
           .catch((err) => toast.error(err ? err.message : 'An error occurred while adding the request'));
       } else {
@@ -217,7 +227,7 @@ const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
         )
           .then(() => {
             toast.success('New request created!');
-            onClose()
+            onClose();
           })
           .catch((err) => toast.error(err ? err.message : 'An error occurred while adding the request'));
       }
@@ -272,13 +282,10 @@ const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
   const AdvancedOptions = forwardRef((props, ref) => {
     return (
       <div ref={ref} className="flex mr-2 text-link cursor-pointer items-center">
-        <button
-          className="btn-advanced"
-          type="button"
-        >
+        <button className="btn-advanced" type="button">
           Options
         </button>
-        <IconCaretDown className="caret ml-1" size={14} strokeWidth={2}/>
+        <IconCaretDown className="caret ml-1" size={14} strokeWidth={2} />
       </div>
     );
   });
@@ -332,21 +339,25 @@ const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
                   GraphQL
                 </label>
 
-                  <input
-                  id="grpc-request"
-                  className="ml-4 cursor-pointer"
-                  type="radio"
-                  name="requestType"
-                  onChange={(event) => {
-                    formik.setFieldValue('requestMethod', 'POST');
-                    formik.handleChange(event);
-                  }}
-                  value="grpc-request"
-                  checked={formik.values.requestType === 'grpc-request'}
-                />
-                <label htmlFor="grpc-request" className="ml-1 cursor-pointer select-none">
-                  gRPC
-                </label>
+                {isGrpcEnabled && (
+                  <>
+                    <input
+                      id="grpc-request"
+                      className="ml-4 cursor-pointer"
+                      type="radio"
+                      name="requestType"
+                      onChange={(event) => {
+                        formik.setFieldValue('requestMethod', 'POST');
+                        formik.handleChange(event);
+                      }}
+                      value="grpc-request"
+                      checked={formik.values.requestType === 'grpc-request'}
+                    />
+                    <label htmlFor="grpc-request" className="ml-1 cursor-pointer select-none">
+                      gRPC
+                    </label>
+                  </>
+                )}
 
                 <input
                   id="from-curl"
@@ -378,7 +389,7 @@ const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
                 autoCorrect="off"
                 autoCapitalize="off"
                 spellCheck="false"
-                onChange={e => {
+                onChange={(e) => {
                   formik.setFieldValue('requestName', e.target.value);
                   !isEditing && formik.setFieldValue('filename', sanitizeName(e.target.value));
                 }}
@@ -392,34 +403,33 @@ const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
               <div className="mt-4">
                 <div className="flex items-center justify-between">
                   <label htmlFor="filename" className="flex items-center font-semibold">
-                    File Name <small className='font-normal text-muted ml-1'>(on filesystem)</small>
+                    File Name <small className="font-normal text-muted ml-1">(on filesystem)</small>
                     <Help width="300">
-                      <p>
-                        Bruno saves each request as a file in your collection's folder.
-                      </p>
+                      <p>Bruno saves each request as a file in your collection's folder.</p>
                       <p className="mt-2">
-                        You can choose a file name different from your request's name or one compatible with filesystem rules.
+                        You can choose a file name different from your request's name or one compatible with filesystem
+                        rules.
                       </p>
                     </Help>
                   </label>
                   {isEditing ? (
-                    <IconArrowBackUp 
-                      className="cursor-pointer opacity-50 hover:opacity-80" 
-                      size={16} 
-                      strokeWidth={1.5} 
-                      onClick={() => toggleEditing(false)} 
+                    <IconArrowBackUp
+                      className="cursor-pointer opacity-50 hover:opacity-80"
+                      size={16}
+                      strokeWidth={1.5}
+                      onClick={() => toggleEditing(false)}
                     />
                   ) : (
                     <IconEdit
-                      className="cursor-pointer opacity-50 hover:opacity-80" 
-                      size={16} 
-                      strokeWidth={1.5} 
-                      onClick={() => toggleEditing(true)} 
+                      className="cursor-pointer opacity-50 hover:opacity-80"
+                      size={16}
+                      strokeWidth={1.5}
+                      onClick={() => toggleEditing(true)}
                     />
                   )}
                 </div>
                 {isEditing ? (
-                  <div className='relative flex flex-row gap-1 items-center justify-between'>
+                  <div className="relative flex flex-row gap-1 items-center justify-between">
                     <input
                       id="file-name"
                       type="text"
@@ -433,13 +443,11 @@ const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
                       onChange={formik.handleChange}
                       value={formik.values.filename || ''}
                     />
-                    <span className='absolute right-2 top-4 flex justify-center items-center file-extension'>.bru</span>
+                    <span className="absolute right-2 top-4 flex justify-center items-center file-extension">.bru</span>
                   </div>
                 ) : (
-                  <div className='relative flex flex-row gap-1 items-center justify-between'>
-                    <PathDisplay
-                      baseName={formik.values.filename? `${formik.values.filename}.bru` : ''}
-                    />
+                  <div className="relative flex flex-row gap-1 items-center justify-between">
+                    <PathDisplay baseName={formik.values.filename ? `${formik.values.filename}.bru` : ''} />
                   </div>
                 )}
                 {formik.touched.filename && formik.errors.filename ? (
@@ -471,7 +479,7 @@ const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
                         onChange={(value) => {
                           formik.handleChange({
                             target: {
-                              name: "requestUrl",
+                              name: 'requestUrl',
                               value: value
                             }
                           });
@@ -526,9 +534,9 @@ const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
               </div>
             )}
             <div className="flex justify-between items-center mt-8 bruno-modal-footer">
-              <div className='flex advanced-options'>
+              <div className="flex advanced-options">
                 <Dropdown onCreate={onAdvancedDropdownCreate} icon={<AdvancedOptions />} placement="bottom-start">
-                  <div 
+                  <div
                     className="dropdown-item"
                     key="show-filesystem-name"
                     onClick={(e) => {
@@ -540,17 +548,14 @@ const NewRequest = ({ collectionUid, item, isEphemeral, onClose }) => {
                   </div>
                 </Dropdown>
               </div>
-              <div className='flex justify-end'>
-                <span className='mr-2'>
+              <div className="flex justify-end">
+                <span className="mr-2">
                   <button type="button" onClick={onClose} className="btn btn-md btn-close">
                     Cancel
                   </button>
                 </span>
                 <span>
-                  <button
-                    type="submit"
-                    className="submit btn btn-md btn-secondary"
-                  >
+                  <button type="submit" className="submit btn btn-md btn-secondary">
                     Create
                   </button>
                 </span>
