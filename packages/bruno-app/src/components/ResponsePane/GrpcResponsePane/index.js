@@ -23,7 +23,7 @@ const GrpcResponsePane = ({ item, collection }) => {
   const activeTabUid = useSelector((state) => state.tabs.activeTabUid);
   const isLoading = ['queued', 'sending'].includes(item.requestState);
 
-  const requestTimeline = ([...(collection?.timeline || [])]).filter(obj => {
+  const requestTimeline = [...(collection?.timeline || [])].filter((obj) => {
     if (obj.itemUid === item.uid) return true;
   });
 
@@ -41,12 +41,7 @@ const GrpcResponsePane = ({ item, collection }) => {
   const getTabPanel = (tab) => {
     switch (tab) {
       case 'response': {
-        return (
-          <GrpcQueryResult
-            item={item}
-            collection={collection}
-          />
-        );
+        return <GrpcQueryResult item={item} collection={collection} />;
       }
       case 'headers': {
         return <GrpcResponseHeaders metadata={response.metadata} />;
@@ -98,7 +93,6 @@ const GrpcResponsePane = ({ item, collection }) => {
   const responseTrailersCount = Array.isArray(response.trailers) ? response.trailers.length : 0;
   const responseMessagesCount = Array.isArray(response.responses) ? response.responses.length : 0;
 
-
   return (
     <StyledWrapper className="flex flex-col h-full relative">
       <div className="flex flex-wrap items-center pl-3 pr-4 tabs" role="tablist">
@@ -119,13 +113,17 @@ const GrpcResponsePane = ({ item, collection }) => {
         </div>
         {!isLoading ? (
           <div className="flex flex-grow justify-end items-center">
-            {focusedTab?.responsePaneTab === "timeline" ? (
+            {focusedTab?.responsePaneTab === 'timeline' ? (
               <ClearTimeline item={item} collection={collection} />
             ) : item?.response ? (
               <>
                 <ResponseLayoutToggle />
                 <ResponseClear item={item} collection={collection} />
-                <GrpcStatusCode status={response.statusCode} text={response.statusText} details={response.statusDescription} />
+                <GrpcStatusCode
+                  status={response.statusCode}
+                  text={response.statusText}
+                  details={response.statusDescription}
+                />
                 <ResponseTime duration={response.duration} />
               </>
             ) : null}
@@ -137,11 +135,8 @@ const GrpcResponsePane = ({ item, collection }) => {
       >
         {isLoading ? <Overlay item={item} collection={collection} /> : null}
         {!item?.response ? (
-          focusedTab?.responsePaneTab === "timeline" && requestTimeline?.length ? (
-            <Timeline
-              collection={collection}
-              item={item}
-            />
+          focusedTab?.responsePaneTab === 'timeline' && requestTimeline?.length ? (
+            <Timeline collection={collection} item={item} />
           ) : null
         ) : (
           <>{getTabPanel(focusedTab.responsePaneTab)}</>

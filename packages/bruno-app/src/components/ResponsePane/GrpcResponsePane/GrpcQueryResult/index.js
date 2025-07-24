@@ -6,13 +6,13 @@ import { useSelector } from 'react-redux';
 import { useTheme } from 'providers/Theme/index';
 import StyledWrapper from './StyledWrapper';
 import { formatISO9075 } from 'date-fns';
-import GrpcError from './GrpcError';
+import GrpcError from '../GrpcError';
 
 const GrpcQueryResult = ({ item, collection }) => {
   const { displayedTheme } = useTheme();
   const preferences = useSelector((state) => state.app.preferences);
   const [showErrorMessage, setShowErrorMessage] = useState(true);
-  
+
   const response = item.response || {};
   const responsesList = response?.responses || [];
   // Reverse the responses list to show the most recent at the top
@@ -31,7 +31,7 @@ const GrpcQueryResult = ({ item, collection }) => {
   // Format a timestamp to a human-readable format
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'Unknown time';
-    
+
     try {
       const date = new Date(timestamp);
       return formatISO9075(date);
@@ -62,14 +62,9 @@ const GrpcQueryResult = ({ item, collection }) => {
 
   return (
     <StyledWrapper className="w-full h-full relative flex flex-col mt-2">
-      {hasError && showErrorMessage && (
-        <GrpcError 
-          error={errorMessage} 
-          onClose={() => setShowErrorMessage(false)} 
-        />
-      )}
+      {hasError && showErrorMessage && <GrpcError error={errorMessage} onClose={() => setShowErrorMessage(false)} />}
       {hasResponses && (
-        <div className={`overflow-y-auto ${responsesList.length === 1 ? "flex-1" : ""}`}>
+        <div className={`overflow-y-auto ${responsesList.length === 1 ? 'flex-1' : ''}`}>
           {responsesList.length === 1 ? (
             // Single message - render directly without accordion
             <div className="h-full">
@@ -89,28 +84,28 @@ const GrpcQueryResult = ({ item, collection }) => {
               {reversedResponsesList.map((response, index) => {
                 // Calculate the original response number (for display purposes)
                 const originalIndex = responsesList.length - index - 1;
-                
+
                 return (
                   <Accordion.Item key={originalIndex} index={index}>
                     <Accordion.Header index={index} style={{ padding: '8px 12px', minHeight: '40px' }}>
                       <div className="flex justify-between w-full">
                         <div className="font-medium">
-                          Response {originalIndex + 1} {index === 0 ? "(Latest)" : ""}
+                          Response {originalIndex + 1} {index === 0 ? '(Latest)' : ''}
                         </div>
                       </div>
                     </Accordion.Header>
                     <Accordion.Content index={index} style={{ padding: '0px' }}>
-                        <div className="h-60">
-                          <CodeEditor
-                            collection={collection}
-                            font={get(preferences, 'font.codeFont', 'default')}
-                            fontSize={get(preferences, 'font.codeFontSize')}
-                            theme={displayedTheme}
-                            value={formatJSON(response)}
-                            mode="application/json"
-                            readOnly={true}
-                          />
-                        </div>
+                      <div className="h-60">
+                        <CodeEditor
+                          collection={collection}
+                          font={get(preferences, 'font.codeFont', 'default')}
+                          fontSize={get(preferences, 'font.codeFontSize')}
+                          theme={displayedTheme}
+                          value={formatJSON(response)}
+                          mode="application/json"
+                          readOnly={true}
+                        />
+                      </div>
                     </Accordion.Content>
                   </Accordion.Item>
                 );
@@ -128,4 +123,4 @@ const GrpcQueryResult = ({ item, collection }) => {
   );
 };
 
-export default GrpcQueryResult; 
+export default GrpcQueryResult;
