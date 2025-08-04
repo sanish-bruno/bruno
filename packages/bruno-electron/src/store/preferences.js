@@ -40,6 +40,15 @@ const defaultPreferences = {
   },
   layout: {
     responsePaneOrientation: 'horizontal'
+  },
+  ai: {
+    enabled: false,
+    openaiKey: '',
+    anthropicKey: '',
+    defaultOpenaiModel: 'gpt-4',
+    defaultAnthropicModel: 'claude-3-sonnet-20240229',
+    temperature: 0.7,
+    maxTokens: 4000
   }
 };
 
@@ -75,7 +84,16 @@ const preferencesSchema = Yup.object().shape({
   }),
   layout: Yup.object({
     responsePaneOrientation: Yup.string().oneOf(['horizontal', 'vertical'])
-  })
+  }),
+  ai: Yup.object({
+    enabled: Yup.boolean(),
+    openaiKey: Yup.string(),
+    anthropicKey: Yup.string(),
+    defaultOpenaiModel: Yup.string(),
+    defaultAnthropicModel: Yup.string(),
+    temperature: Yup.number().min(0).max(2),
+    maxTokens: Yup.number().min(100).max(8000)
+  }).optional()
 });
 
 class PreferencesStore {
@@ -157,6 +175,20 @@ const preferencesUtil = {
   },
   getResponsePaneOrientation: () => {
     return get(getPreferences(), 'layout.responsePaneOrientation', 'horizontal');
+  },
+  getAISettings: () => {
+    return get(getPreferences(), 'ai', {
+      enabled: false,
+      openaiKey: '',
+      anthropicKey: '',
+      defaultOpenaiModel: 'gpt-4',
+      defaultAnthropicModel: 'claude-3-sonnet-20240229',
+      temperature: 0.7,
+      maxTokens: 4000
+    });
+  },
+  isAIEnabled: () => {
+    return get(getPreferences(), 'ai.enabled', false);
   },
   getSystemProxyEnvVariables: () => {
     const { http_proxy, HTTP_PROXY, https_proxy, HTTPS_PROXY, no_proxy, NO_PROXY } = process.env;

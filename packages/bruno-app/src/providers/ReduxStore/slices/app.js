@@ -23,6 +23,15 @@ const initialState = {
     },
     font: {
       codeFont: 'default'
+    },
+    ai: {
+      enabled: false,
+      openaiKey: '',
+      anthropicKey: '',
+      defaultOpenaiModel: 'gpt-4',
+      defaultAnthropicModel: 'claude-3-sonnet-20240229',
+      temperature: 0.7,
+      maxTokens: 4000
     }
   },
   generateCode: {

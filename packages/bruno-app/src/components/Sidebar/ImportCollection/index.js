@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconLoader2 } from '@tabler/icons';
+import { IconLoader2, IconBrain } from '@tabler/icons';
 import importBrunoCollection from 'utils/importers/bruno-collection';
 import { postmanToBruno, readFile } from 'utils/importers/postman-collection';
 import importInsomniaCollection from 'utils/importers/insomnia-collection';
@@ -7,9 +7,11 @@ import importOpenapiCollection from 'utils/importers/openapi-collection';
 import { toastError } from 'utils/common/error';
 import Modal from 'components/Modal';
 import fileDialog from 'file-dialog';
+import AIGenerateCollection from './AIGenerateCollection';
 
 const ImportCollection = ({ onClose, handleSubmit }) => {
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false);
+  const [showAIGenerate, setShowAIGenerate] = useState(false);
 
   const handleImportBrunoCollection = () => {
     importBrunoCollection()
@@ -18,7 +20,6 @@ const ImportCollection = ({ onClose, handleSubmit }) => {
       })
       .catch((err) => toastError(err, 'Import collection failed'))
   };
-
 
   const handleImportPostmanCollection = () => {
     fileDialog({ accept: 'application/json' })
@@ -47,15 +48,20 @@ const ImportCollection = ({ onClose, handleSubmit }) => {
       })
       .catch((err) => toastError(err, 'OpenAPI v3 Import collection failed'))
   };
+
+  const handleAIGenerate = () => {
+    setShowAIGenerate(true);
+  };
   
-  const CollectionButton = ({ children, className, onClick }) => {
+  const CollectionButton = ({ children, className, onClick, icon: Icon }) => {
     return (
       <button
         type="button"
         onClick={onClick}
-        className={`rounded bg-transparent px-2.5 py-1 text-xs font-semibold text-zinc-900 dark:text-zinc-50 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-500 hover:bg-gray-50 dark:hover:bg-zinc-700
+        className={`rounded bg-transparent px-2.5 py-1 text-xs font-semibold text-zinc-900 dark:text-zinc-50 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-500 hover:bg-gray-50 dark:hover:bg-zinc-700 flex items-center gap-2
         ${className}`}
       >
+        {Icon && <Icon size={14} />}
         {children}
       </button>
     );
@@ -103,6 +109,15 @@ const ImportCollection = ({ onClose, handleSubmit }) => {
       </div>
     );
   };
+
+  if (showAIGenerate) {
+    return (
+      <AIGenerateCollection
+        onClose={() => setShowAIGenerate(false)}
+        handleSubmit={handleSubmit}
+      />
+    );
+  }
   
   return (
     <>
@@ -111,11 +126,14 @@ const ImportCollection = ({ onClose, handleSubmit }) => {
         <Modal size="sm" title="Import Collection" hideFooter={true} handleCancel={onClose}>
           <div className="flex flex-col">
             <h3 className="text-sm">Select the type of your existing collection :</h3>
-            <div className="mt-4 grid grid-rows-2 grid-flow-col gap-2">
+            <div className="mt-4 grid grid-rows-3 grid-flow-col gap-2">
               <CollectionButton onClick={handleImportBrunoCollection}>Bruno Collection</CollectionButton>
               <CollectionButton onClick={handleImportPostmanCollection}>Postman Collection</CollectionButton>
               <CollectionButton onClick={handleImportInsomniaCollection}>Insomnia Collection</CollectionButton>
               <CollectionButton onClick={handleImportOpenapiCollection}>OpenAPI V3 Spec</CollectionButton>
+              <CollectionButton onClick={handleAIGenerate} icon={IconBrain} className="text-blue-600 ring-blue-300 dark:ring-blue-500">
+                Generate with AI
+              </CollectionButton>
             </div>
           </div>
         </Modal>

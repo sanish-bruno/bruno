@@ -38,7 +38,7 @@ const lastOpenedCollections = new LastOpenedCollections();
 // Reference: https://content-security-policy.com/
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "connect-src 'self' https://*.posthog.com",
+  "connect-src 'self' https://*.posthog.com https://api.openai.com https://api.anthropic.com",
   "font-src 'self' https: data:;",
   "frame-src data:",
   // this has been commented out to make oauth2 work

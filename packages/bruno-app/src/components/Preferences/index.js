@@ -7,6 +7,7 @@ import General from './General';
 import Proxy from './ProxySettings';
 import Display from './Display';
 import Keybindings from './Keybindings';
+import AISettings from './AISettings';
 
 import StyledWrapper from './StyledWrapper';
 
@@ -37,6 +38,10 @@ const Preferences = ({ onClose }) => {
         return <Keybindings close={onClose} />;
       }
 
+      case 'ai': {
+        return <AISettings close={onClose} />;
+      }
+
       case 'support': {
         return <Support />;
       }
@@ -59,6 +64,9 @@ const Preferences = ({ onClose }) => {
             </div>
             <div className={getTabClassname('keybindings')} role="tab" onClick={() => setTab('keybindings')}>
               Keybindings
+            </div>
+            <div className={getTabClassname('ai')} role="tab" onClick={() => setTab('ai')}>
+              AI
             </div>
             <div className={getTabClassname('support')} role="tab" onClick={() => setTab('support')}>
               Support
