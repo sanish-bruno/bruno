@@ -68,7 +68,7 @@ const ShareCollection = ({ onClose, collectionUid }) => {
           </div>
 
           <div
-            className={`flex flex-col border border-gray-200 dark:border-gray-600 items-center p-3 rounded-lg transition-colors ${
+            className={`flex flex-col border border-gray-200 dark:border-gray-600 items-center rounded-lg transition-colors ${
               isCollectionLoading
                 ? 'opacity-50 cursor-not-allowed'
                 : 'hover:bg-gray-100 dark:hover:bg-gray-500/10 cursor-pointer'
@@ -76,22 +76,24 @@ const ShareCollection = ({ onClose, collectionUid }) => {
             onClick={isCollectionLoading ? undefined : handleExportPostmanCollection}
           >
             {hasGrpcRequests && (
-              <div className="px-3 py-2 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 text-xs border-b border-yellow-100 dark:border-yellow-800/20 flex items-center">
+              <div className="px-3 py-2 bg-yellow-50 w-full dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 text-xs border-b border-yellow-100 dark:border-yellow-800/20 flex items-center">
                 <IconAlertTriangle size={16} className="mr-2 flex-shrink-0" />
                 <span>Note: gRPC requests in this collection will not be exported</span>
               </div>
             )}
-            <div className="mr-3 p-1 rounded-full">
-              {isCollectionLoading ? (
-                <IconLoader2 size={28} className="animate-spin" />
-              ) : (
-                <IconDownload size={28} strokeWidth={1} className="" />
-              )}
-            </div>
-            <div className="flex-1">
-              <div className="font-medium">Postman Collection</div>
-              <div className="text-xs">
-                {isCollectionLoading ? 'Loading collection...' : 'Export in Postman format'}
+            <div className="flex items-center p-3 w-full">
+              <div className="mr-3 p-1 rounded-full">
+                {isCollectionLoading ? (
+                  <IconLoader2 size={28} className="animate-spin" />
+                ) : (
+                  <IconDownload size={28} strokeWidth={1} className="" />
+                )}
+              </div>
+              <div className="flex-1">
+                <div className="font-medium">Postman Collection</div>
+                <div className="text-xs">
+                  {isCollectionLoading ? 'Loading collection...' : 'Export in Postman format'}
+                </div>
               </div>
             </div>
           </div>
