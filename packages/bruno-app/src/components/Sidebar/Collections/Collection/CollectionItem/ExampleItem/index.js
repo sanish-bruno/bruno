@@ -26,7 +26,7 @@ const ExampleItem = ({ example, item, collection }) => {
 
   return (
     <StyledWrapper 
-      className="flex items-center h-full w-full hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer text-sm group"
+      className="flex items-center h-full w-full hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer group"
       onClick={handleExampleClick}
     >
       {indents && indents.length
@@ -44,8 +44,8 @@ const ExampleItem = ({ example, item, collection }) => {
         className="flex flex-grow items-center h-full overflow-hidden"
         style={{ paddingLeft: 8 }}
       >
-        <IconBookmark size={12} className="mr-2 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300" />
-        <span className="truncate text-gray-700 dark:text-gray-300 text-xs">
+        <IconBookmark size={16} className="mr-2 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300" />
+        <span className="truncate text-gray-700 dark:text-gray-300">
           {example.name}
         </span>
       </div>
