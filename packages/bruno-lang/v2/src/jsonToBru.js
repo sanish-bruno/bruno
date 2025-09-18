@@ -17,7 +17,7 @@ const stripLastLine = (text) => {
 };
 
 const jsonToBru = (json) => {
-  const { meta, http, grpc, params, headers, metadata, auth, body, script, tests, vars, assertions, settings, docs } = json;
+  const { meta, http, grpc, params, headers, metadata, auth, body, script, tests, vars, assertions, settings, docs, examples, response } = json;
 
 
   let bru = '';
@@ -700,6 +700,88 @@ ${indentString(docs)}
 }
 
 `;
+  }
+
+  // Handle response blocks
+  if (response) {
+    // Response headers
+    if (response.headers && response.headers.length) {
+      bru += 'response:headers {';
+      if (enabled(response.headers).length) {
+        bru += `\n${indentString(
+          enabled(response.headers)
+            .map((item) => `${quoteKey(item.name)}: ${item.value}`)
+            .join('\n')
+        )}`;
+      }
+
+      if (disabled(response.headers).length) {
+        bru += `\n${indentString(
+          disabled(response.headers)
+            .map((item) => `~${quoteKey(item.name)}: ${item.value}`)
+            .join('\n')
+        )}`;
+      }
+
+      bru += '\n}\n\n';
+    }
+    
+    // Response status
+    if (response.status) {
+      bru += 'response:status {\n';
+      for (const key in response.status) {
+        bru += `  ${key}: ${response.status[key]}\n`;
+      }
+      bru += '}\n\n';
+    }
+    
+    // Response description
+    if (response.description && response.description.length) {
+      bru += `response:description {
+${indentString(response.description)}
+}
+
+`;
+    }
+    
+    // Response body
+    if (response.body) {
+      if (response.body.json && response.body.json.length) {
+        bru += `response:body:json {
+${indentString(response.body.json)}
+}
+
+`;
+      }
+
+      if (response.body.text && response.body.text.length) {
+        bru += `response:body:text {
+${indentString(response.body.text)}
+}
+
+`;
+      }
+
+      if (response.body.xml && response.body.xml.length) {
+        bru += `response:body:xml {
+${indentString(response.body.xml)}
+}
+
+`;
+      }
+    }
+  }
+
+  if (examples && examples.length) {
+    examples.forEach((example) => {
+      // Use recursive call to jsonToBru for each example
+      const exampleBru = jsonToBru(example);
+      bru += `example {
+${indentString(exampleBru)}
+}
+
+`;
+    });
   }
 
   return stripLastLine(bru);
