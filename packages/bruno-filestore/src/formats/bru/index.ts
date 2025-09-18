@@ -47,7 +47,8 @@ export const bruRequestToJson = (data: string | any, parsed: boolean = false): a
         vars: _.get(json, 'vars', {}),
         assertions: _.get(json, 'assertions', []),
         tests: _.get(json, 'tests', ''),
-        docs: _.get(json, 'docs', '')
+        docs: _.get(json, 'docs', ''),
+        examples: _.get(json, 'examples', [])
       }
     };
 
@@ -175,6 +176,7 @@ export const jsonRequestToBru = (json: any): string => {
     bruJson.tests = _.get(json, 'request.tests', '');
     bruJson.settings = _.get(json, 'settings', {});
     bruJson.docs = _.get(json, 'request.docs', '');
+    bruJson.examples = _.get(json, 'request.examples', []);
 
     const bru = jsonToBruV2(bruJson);
     return bru;

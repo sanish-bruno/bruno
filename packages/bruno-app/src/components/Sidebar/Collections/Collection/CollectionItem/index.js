@@ -26,6 +26,7 @@ import StyledWrapper from './StyledWrapper';
 import NetworkError from 'components/ResponsePane/NetworkError/index';
 import CollectionItemInfo from './CollectionItemInfo/index';
 import CollectionItemIcon from './CollectionItemIcon';
+import ExampleItem from './ExampleItem';
 import { scrollToTheActiveTab } from 'utils/tabs';
 import { isTabForItemActive as isTabForItemActiveSelector, isTabForItemPresent as isTabForItemPresentSelector } from 'src/selectors/tab';
 import { isEqual } from 'lodash';
@@ -40,6 +41,7 @@ const CollectionItem = ({ item, collectionUid, collectionPathname, searchText })
   const isTabForItemPresent = useSelector(_isTabForItemPresentSelector, isEqual);
   
   const isSidebarDragging = useSelector((state) => state.app.isDragging);
+  const collection = useSelector((state) => state.collections.collections?.find(c => c.uid === collectionUid));
   const dispatch = useDispatch();
 
   // We use a single ref for drag and drop.
@@ -53,9 +55,13 @@ const CollectionItem = ({ item, collectionUid, collectionPathname, searchText })
   const [newFolderModalOpen, setNewFolderModalOpen] = useState(false);
   const [runCollectionModalOpen, setRunCollectionModalOpen] = useState(false);
   const [itemInfoModalOpen, setItemInfoModalOpen] = useState(false);
+  const [examplesExpanded, setExamplesExpanded] = useState(false);
   const hasSearchText = searchText && searchText?.trim()?.length;
   const itemIsCollapsed = hasSearchText ? false : item.collapsed;
   const isFolder = isItemAFolder(item);
+  
+  // Check if request has examples
+  const hasExamples = isItemARequest(item) && item.request?.examples && item.request.examples.length > 0;
 
   const [dropType, setDropType] = useState(null); // 'adjacent' or 'inside'
 
@@ -154,6 +160,10 @@ const CollectionItem = ({ item, collectionUid, collectionPathname, searchText })
     'rotate-90': !itemIsCollapsed
   });
 
+  const examplesIconClassName = classnames({
+    'rotate-90': examplesExpanded
+  });
+
   const itemRowClassName = classnames('flex collection-item-name relative items-center', {
     'item-focused-in-tab': isTabForItemActive,
     'item-hovered': isOver && canDrop,
@@ -224,6 +234,18 @@ const CollectionItem = ({ item, collectionUid, collectionPathname, searchText })
 
   // prevent the parent's double-click handler from firing
   const handleFolderDoubleClick = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
+  const handleExamplesCollapse = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setExamplesExpanded(!examplesExpanded);
+  };
+
+  // prevent the parent's double-click handler from firing
+  const handleExamplesDoubleClick = (e) => {
     e.stopPropagation();
     e.preventDefault();
   };
@@ -371,6 +393,15 @@ const CollectionItem = ({ item, collectionUid, collectionPathname, searchText })
                   onClick={handleFolderCollapse}
                   onDoubleClick={handleFolderDoubleClick}
                 />
+              ) : hasExamples ? (
+                <IconChevronRight
+                  size={16}
+                  strokeWidth={2}
+                  className={examplesIconClassName}
+                  style={{ color: 'rgb(160 160 160)' }}
+                  onClick={handleExamplesCollapse}
+                  onDoubleClick={handleExamplesDoubleClick}
+                />
               ) : null}
             </div>
             <div className="ml-1 flex w-full h-full items-center overflow-hidden">
@@ -453,6 +484,25 @@ const CollectionItem = ({ item, collectionUid, collectionPathname, searchText })
                   Generate Code
                 </div>
               )}
+              {!isFolder && (
+                  <div
+                    className="dropdown-item"
+                    onClick={(e) => {
+                      dropdownTippyRef.current.hide();
+                      console.log('create example');
+                      // dispatch(
+                      //   addTab({
+                      //     uid: `examples-${item.uid}`,
+                      //     collectionUid: collectionUid,
+                      //     type: 'response-examples',
+                      //     itemUid: item.uid
+                      //   })
+                      // );
+                    }}
+                  >
+                    Create Example
+                  </div>
+              )}
               <div
                 className="dropdown-item"
                 onClick={(e) => {
@@ -509,6 +559,33 @@ const CollectionItem = ({ item, collectionUid, collectionPathname, searchText })
             : null}
         </div>
       ) : null}
+      
+      {/* Show examples when expanded */}
+      {isItemARequest(item) && examplesExpanded && hasExamples && (
+        <div>
+          {item.request.examples.map((example, index) => {
+            // Transform parsed example to UI format
+            const transformedExample = {
+              id: example.meta?.name || `example-${index}`,
+              name: example.meta?.name || `Example ${index + 1}`,
+              status: parseInt(example.response?.status?.code) || 200,
+              headers: example.response?.headers || [],
+              body: example.response?.body?.text || '',
+              description: example.meta?.description || ''
+            };
+            
+            return (
+              <ExampleItem
+                key={transformedExample.id || index}
+                example={transformedExample}
+                item={item}
+                collection={collection}
+              />
+            );
+          
+          })}
+        </div>
+      )}
     </StyledWrapper>
   );
 };
