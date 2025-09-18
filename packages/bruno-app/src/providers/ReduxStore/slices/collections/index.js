@@ -2750,8 +2750,8 @@ export const collectionsSlice = createSlice({
       if (collection) {
         const item = findItemInCollection(collection, itemUid);
         if (item && item.request.examples) {
-          const exampleIndex = item.request.examples.findIndex(ex => ex.id === exampleId);
-          if (exampleIndex !== -1) {
+          const exampleIndex = parseInt(exampleId);
+          if (exampleIndex >= 0 && exampleIndex < item.request.examples.length) {
             item.request.examples[exampleIndex] = {
               meta: {
                 name: example.name,
@@ -2779,7 +2779,10 @@ export const collectionsSlice = createSlice({
       if (collection) {
         const item = findItemInCollection(collection, itemUid);
         if (item && item.request.examples) {
-          item.request.examples = item.request.examples.filter((ex, index) => index.toString() !== exampleId);
+          const exampleIndex = parseInt(exampleId);
+          if (exampleIndex >= 0 && exampleIndex < item.request.examples.length) {
+            item.request.examples.splice(exampleIndex, 1);
+          }
         }
       }
     },

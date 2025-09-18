@@ -1,22 +1,48 @@
 import styled from 'styled-components';
 
 const StyledWrapper = styled.div`
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  height: 28px; /* Match the height of other items */
+  position: relative;
   
-  &:hover {
-    background-color: var(--color-gray-100);
-  }
-  
-  .dark &:hover {
-    background-color: var(--color-gray-800);
+  .menu-icon {
+    color: ${(props) => props.theme.sidebar.dropdownIcon.color};
+
+    .dropdown {
+      div[aria-expanded='true'] {
+        visibility: visible;
+      }
+      div[aria-expanded='false'] {
+        visibility: hidden;
+      }
+    }
   }
 
   .indent-block {
     border-right: ${(props) => props.theme.sidebar.collection.item.indentBorder};
+  }
+
+  .collection-item-name {
+    height: 1.875rem;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+
+    span.item-name {
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    &:hover,
+    &.item-hovered {
+      background: ${(props) => props.theme.sidebar.collection.item.hoverBg};
+      .menu-icon {
+        .dropdown {
+          div[aria-expanded='false'] {
+            visibility: visible;
+          }
+        }
+      }
+    }
   }
 `;
 
