@@ -745,30 +745,12 @@ ${indentString(response.description)}
     }
     
     // Response body
-    if (response.body) {
-      if (response.body.json && response.body.json.length) {
-        bru += `response:body:json {
-${indentString(response.body.json)}
-}
-
-`;
-      }
-
-      if (response.body.text && response.body.text.length) {
-        bru += `response:body:text {
+    if (response.body && response.body.text && response.body.text.length) {
+      bru += `response:body {
 ${indentString(response.body.text)}
 }
 
 `;
-      }
-
-      if (response.body.xml && response.body.xml.length) {
-        bru += `response:body:xml {
-${indentString(response.body.xml)}
-}
-
-`;
-      }
     }
   }
 

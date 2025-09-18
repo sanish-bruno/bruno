@@ -235,7 +235,7 @@ example {
     code: 201
   }
   
-  response:body:json {
+  response:body {
     {
       "id": 123,
       "name": "John Doe",
@@ -272,7 +272,7 @@ example {
       expect(example.script.req).toContain('Making request');
       expect(example.script.res).toContain('User created successfully');
       expect(example.response.status.code).toBe('201');
-      expect(example.response.body.json).toContain('"id": 123');
+      expect(example.response.body.text).toContain('"id": 123');
     });
   });
 

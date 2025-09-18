@@ -29,7 +29,7 @@
                     "code": "200"
                 },
                 "body": {
-                    "json": "{\n  \"id\": 123,\n  \"name\": \"John Doe\"\n}"
+                    "text": "{\n  \"id\": 123,\n  \"name\": \"John Doe\"\n}"
                 }
             }
         }

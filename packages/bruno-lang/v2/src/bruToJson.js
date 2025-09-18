@@ -35,7 +35,7 @@ const grammar = ohm.grammar(`Bru {
   bodyforms = bodyformurlencoded | bodymultipart | bodyfile
   params = paramspath | paramsquery
   responses = responseheaders | responsebodies | responsedescription | responsestatus
-  responsebodies = responsebodyjson | responsebodytext | responsebodyxml | responsebody
+  responsebodies = responsebody
   
   // Oauth2 additional parameters
   authOauth2Configs = oauth2AuthReqConfig | oauth2AccessTokenReqConfig | oauth2RefreshTokenReqConfig
@@ -151,9 +151,6 @@ const grammar = ohm.grammar(`Bru {
   responsestatus = "response:status" dictionary
   
   responsebody = "response:body" st* "{" nl* textblock tagend
-  responsebodyjson = "response:body:json" st* "{" nl* textblock tagend
-  responsebodytext = "response:body:text" st* "{" nl* textblock tagend
-  responsebodyxml = "response:body:xml" st* "{" nl* textblock tagend
 
   // Examples - multiple example blocks
   example = "example" st* "{" nl* examplecontent tagend
@@ -1048,34 +1045,7 @@ const sem = grammar.createSemantics().addAttribute('ast', {
     return {
       response: {
         body: {
-          json: outdentString(textblock.sourceString)
-        }
-      }
-    };
-  },
-  responsebodyjson(_1, _2, _3, _4, textblock, _5) {
-    return {
-      response: {
-        body: {
-          json: outdentString(textblock.sourceString)
-        }
-      }
-    };
-  },
-  responsebodytext(_1, _2, _3, _4, textblock, _5) {
-    return {
-      response: {
-        body: {
           text: outdentString(textblock.sourceString)
-        }
-      }
-    };
-  },
-  responsebodyxml(_1, _2, _3, _4, textblock, _5) {
-    return {
-      response: {
-        body: {
-          xml: outdentString(textblock.sourceString)
         }
       }
     };
