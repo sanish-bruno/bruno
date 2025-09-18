@@ -2714,6 +2714,78 @@ export const collectionsSlice = createSlice({
     updateActiveConnections: (state, action) => {
       state.activeConnections = [...action.payload.activeConnectionIds];
     },
+    addResponseExample: (state, action) => {
+      const { itemUid, collectionUid, example } = action.payload;
+      const collection = findCollectionByUid(state.collections, collectionUid);
+      
+      if (collection) {
+        const item = findItemInCollection(collection, itemUid);
+        if (item) {
+          if (!item.request.examples) {
+            item.request.examples = [];
+          }
+          item.request.examples.push({
+            meta: {
+              name: example.name,
+              type: 'http',
+              description: example.description || ''
+            },
+            response: {
+              status: {
+                code: example.status.toString()
+              },
+              headers: example.headers || [],
+              body: {
+                text: example.body || ''
+              }
+            }
+          });
+        }
+      }
+    },
+    updateResponseExample: (state, action) => {
+      const { itemUid, collectionUid, exampleId, example } = action.payload;
+      const collection = findCollectionByUid(state.collections, collectionUid);
+      
+      if (collection) {
+        const item = findItemInCollection(collection, itemUid);
+        if (item && item.request.examples) {
+          const exampleIndex = parseInt(exampleId);
+          if (exampleIndex >= 0 && exampleIndex < item.request.examples.length) {
+            item.request.examples[exampleIndex] = {
+              meta: {
+                name: example.name,
+                type: 'http',
+                description: example.description || ''
+              },
+              response: {
+                status: {
+                  code: example.status.toString()
+                },
+                headers: example.headers || [],
+                body: {
+                  text: example.body || ''
+                }
+              }
+            };
+          }
+        }
+      }
+    },
+    deleteResponseExample: (state, action) => {
+      const { itemUid, collectionUid, exampleId } = action.payload;
+      const collection = findCollectionByUid(state.collections, collectionUid);
+      
+      if (collection) {
+        const item = findItemInCollection(collection, itemUid);
+        if (item && item.request.examples) {
+          const exampleIndex = parseInt(exampleId);
+          if (exampleIndex >= 0 && exampleIndex < item.request.examples.length) {
+            item.request.examples.splice(exampleIndex, 1);
+          }
+        }
+      }
+    },
   }
 });
 
@@ -2841,7 +2913,10 @@ export const {
   addRequestTag,
   deleteRequestTag,
   updateCollectionTagsList,
-  updateActiveConnections
+  updateActiveConnections,
+  addResponseExample,
+  updateResponseExample,
+  deleteResponseExample
 } = collectionsSlice.actions;
 
 export default collectionsSlice.reducer;
