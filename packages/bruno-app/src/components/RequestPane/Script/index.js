@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import get from 'lodash/get';
 import { useDispatch, useSelector } from 'react-redux';
 import CodeEditor from 'components/CodeEditor';
+import PawAssist from 'components/PawAssist';
 import { updateRequestScript, updateResponseScript } from 'providers/ReduxStore/slices/collections';
 import { sendRequest, saveRequest } from 'providers/ReduxStore/slices/collections/actions';
 import { useTheme } from 'providers/Theme';
@@ -14,6 +15,10 @@ const Script = ({ item, collection }) => {
 
   const { displayedTheme } = useTheme();
   const preferences = useSelector((state) => state.app.preferences);
+
+  // Refs for editor instances
+  const requestEditorRef = useRef(null);
+  const responseEditorRef = useRef(null);
 
   const onRequestScriptEdit = (value) => {
     dispatch(
@@ -41,8 +46,12 @@ const Script = ({ item, collection }) => {
   return (
     <StyledWrapper className="w-full flex flex-col">
       <div className="flex flex-col flex-1 mt-2 gap-y-2">
-        <div className="title text-xs">Pre Request</div>
+        <div className="flex items-center justify-between">
+          <div className="title text-xs">Pre Request</div>
+          <PawAssist scriptType="pre" editorRef={requestEditorRef} />
+        </div>
         <CodeEditor
+          ref={requestEditorRef}
           collection={collection}
           value={requestScript || ''}
           theme={displayedTheme}
@@ -56,8 +65,12 @@ const Script = ({ item, collection }) => {
         />
       </div>
       <div className="flex flex-col flex-1 mt-2 gap-y-2">
-        <div className="title text-xs">Post Response</div>
+        <div className="flex items-center justify-between">
+          <div className="title text-xs">Post Response</div>
+          <PawAssist scriptType="post" editorRef={responseEditorRef} />
+        </div>
         <CodeEditor
+          ref={responseEditorRef}
           collection={collection}
           value={responseScript || ''}
           theme={displayedTheme}

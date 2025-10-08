@@ -41,6 +41,7 @@ const collectionWatcher = require('./app/collection-watcher');
 const { loadWindowState, saveBounds, saveMaximized } = require('./utils/window');
 const registerNotificationsIpc = require('./ipc/notifications');
 const registerGlobalEnvironmentsIpc = require('./ipc/global-environments');
+const { registerPawAssistIpc } = require('./ipc/paw-assist');
 const { safeParseJSON, safeStringifyJSON } = require('./utils/common');
 const { getDomainsWithCookies } = require('./utils/cookies');
 const { cookiesStore } = require('./store/cookies');
@@ -54,7 +55,7 @@ const systemMonitor = new SystemMonitor();
 // Reference: https://content-security-policy.com/
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "connect-src 'self' https://*.posthog.com",
+  'connect-src \'self\' https://*.posthog.com https://api.deepseek.com https://api.openai.com https://api.anthropic.com',
   "font-src 'self' https: data:;",
   "frame-src data:",
   // this has been commented out to make oauth2 work
@@ -219,6 +220,7 @@ app.on('ready', async () => {
   registerPreferencesIpc(mainWindow, collectionWatcher, lastOpenedCollections);
   registerNotificationsIpc(mainWindow, collectionWatcher);
   registerFilesystemIpc(mainWindow);
+  registerPawAssistIpc(mainWindow);
 });
 
 // Quit the app once all windows are closed

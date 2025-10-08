@@ -22,7 +22,7 @@ window.JSHINT = JSHINT;
 
 const TAB_SIZE = 2;
 
-export default class CodeEditor extends React.Component {
+class CodeEditor extends React.Component {
   constructor(props) {
     super(props);
 
@@ -202,6 +202,11 @@ export default class CodeEditor extends React.Component {
         editor,
         autoCompleteOptions
       );
+
+      // Expose editor instance to parent via ref
+      if (this.props.ref) {
+        this.props.ref.current = { editor };
+      }
     }
   }
 
@@ -302,3 +307,5 @@ export default class CodeEditor extends React.Component {
     }
   };
 }
+
+export default CodeEditor;

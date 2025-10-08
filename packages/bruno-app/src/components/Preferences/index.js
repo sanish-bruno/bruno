@@ -8,6 +8,7 @@ import Proxy from './ProxySettings';
 import Display from './Display';
 import Keybindings from './Keybindings';
 import Beta from './Beta';
+import PawAssist from './PawAssist';
 
 import StyledWrapper from './StyledWrapper';
 
@@ -42,6 +43,10 @@ const Preferences = ({ onClose }) => {
         return <Beta close={onClose} />;
       }
 
+      case 'pawassist': {
+        return <PawAssist close={onClose} />;
+      }
+
       case 'support': {
         return <Support />;
       }
@@ -64,6 +69,9 @@ const Preferences = ({ onClose }) => {
             </div>
             <div className={getTabClassname('keybindings')} role="tab" onClick={() => setTab('keybindings')}>
               Keybindings
+            </div>
+            <div className={getTabClassname('pawassist')} role="tab" onClick={() => setTab('pawassist')}>
+              Paw Assist
             </div>
             <div className={getTabClassname('support')} role="tab" onClick={() => setTab('support')}>
               Support

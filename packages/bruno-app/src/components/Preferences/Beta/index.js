@@ -14,6 +14,11 @@ const BETA_FEATURES = [
     id: 'nodevm',
     label: 'Node VM Runtime',
     description: 'Enable Node VM runtime for JavaScript execution in Developer Mode'
+  },
+  {
+    id: 'pawAssist',
+    label: 'Paw Assist',
+    description: 'AI-powered scripting assistant for generating and converting code in Bruno'
   }
 ];
 

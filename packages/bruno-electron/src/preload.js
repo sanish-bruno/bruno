@@ -16,3 +16,13 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     return path;
   }
 });
+
+// Expose Paw Assist API
+contextBridge.exposeInMainWorld('pawAssist', {
+  generate: (request) => ipcRenderer.invoke('pawAssist:generate', request),
+  convertPostman: (request) => ipcRenderer.invoke('pawAssist:convertPostman', request),
+  getSettings: () => ipcRenderer.invoke('pawAssist:getSettings'),
+  updateSettings: (request) => ipcRenderer.invoke('pawAssist:updateSettings', request),
+  testConnection: () => ipcRenderer.invoke('pawAssist:testConnection'),
+  getProviders: () => ipcRenderer.invoke('pawAssist:getProviders')
+});
