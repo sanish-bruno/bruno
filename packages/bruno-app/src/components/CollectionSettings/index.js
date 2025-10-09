@@ -14,6 +14,7 @@ import Script from './Script';
 import Test from './Tests';
 import Presets from './Presets';
 import Grpc from './Grpc';
+import P2PSettings from '../P2PSettings';
 import StyledWrapper from './StyledWrapper';
 import Vars from './Vars/index';
 import StatusDot from 'components/StatusDot';
@@ -128,6 +129,9 @@ const CollectionSettings = ({ collection }) => {
       case 'grpc': {
         return <Grpc collection={collection} />;
       }
+      case 'p2p': {
+        return <P2PSettings />;
+      }
     }
   };
 
@@ -180,6 +184,9 @@ const CollectionSettings = ({ collection }) => {
             {grpcConfig.protoFiles && grpcConfig.protoFiles.length > 0 && <StatusDot />}
           </div>
         )}
+        <div className={getTabClassname('p2p')} role="tab" onClick={() => setTab('p2p')}>
+          P2P Sync
+        </div>
       </div>
       <section className="mt-4 h-full overflow-auto">{getTabPanel(tab)}</section>
     </StyledWrapper>
