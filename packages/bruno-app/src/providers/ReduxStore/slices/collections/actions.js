@@ -96,6 +96,8 @@ export const saveRequest = (itemUid, collectionUid, saveSilently) => (dispatch, 
     const itemToSave = transformRequestToSaveToFilesystem(item);
     const { ipcRenderer } = window;
 
+    console.log('saveRequest itemToSave', itemToSave);
+
     itemSchema
       .validate(itemToSave)
       .then(() => ipcRenderer.invoke('renderer:save-request', item.pathname, itemToSave))

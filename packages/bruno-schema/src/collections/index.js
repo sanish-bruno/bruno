@@ -328,7 +328,6 @@ const exampleSchema = Yup.object({
     method: requestMethodSchema,
     headers: Yup.array().of(keyValueSchema).required('headers are required'),
     params: Yup.array().of(requestParamsSchema).required('params are required'),
-    auth: authSchema,
     body: requestBodySchema
   })
     .noUnknown(true)
