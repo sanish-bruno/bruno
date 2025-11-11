@@ -10,6 +10,7 @@ import HeightBoundContainer from 'ui/HeightBoundContainer';
 import StyledWrapper from './StyledWrapper';
 import { find, get } from 'lodash';
 import Documentation from 'components/Documentation/index';
+import Hooks from 'components/RequestPane/Hooks';
 import { useEffect } from 'react';
 import { getPropertyFromDraftOrRequest } from 'utils/collections/index';
 
@@ -38,6 +39,9 @@ const GrpcRequestPane = ({ item, collection, handleRun }) => {
       case 'auth': {
         return <GrpcAuth item={item} collection={collection} />;
       }
+      case 'hooks': {
+        return <Hooks item={item} collection={collection} />;
+      }
       case 'docs': {
         return <Documentation item={item} collection={collection} />;
       }
@@ -62,10 +66,11 @@ const GrpcRequestPane = ({ item, collection, handleRun }) => {
     });
   };
 
-  const isMultipleContentTab = ['script', 'vars', 'auth', 'docs'].includes(focusedTab.requestPaneTab);
+  const isMultipleContentTab = ['script', 'vars', 'auth', 'docs', 'hooks'].includes(focusedTab.requestPaneTab);
   const body = getPropertyFromDraftOrRequest(item, 'request.body');
   const headers = getPropertyFromDraftOrRequest(item, 'request.headers');
   const docs = getPropertyFromDraftOrRequest(item, 'request.docs');
+  const hooks = getPropertyFromDraftOrRequest(item, 'request.hooks');
   const auth = getPropertyFromDraftOrRequest(item, 'request.auth');
 
   const activeHeadersLength = headers.filter((header) => header.enabled).length;
@@ -102,6 +107,10 @@ const GrpcRequestPane = ({ item, collection, handleRun }) => {
         <div className={getTabClassname('auth')} role="tab" onClick={() => selectTab('auth')}>
           Auth
           {auth.mode !== 'none' && <StatusDot type="default" />}
+        </div>
+        <div className={getTabClassname('hooks')} role="tab" onClick={() => selectTab('hooks')}>
+          Hooks
+          {hooks && hooks.length > 0 && <StatusDot type="default" />}
         </div>
         <div className={getTabClassname('docs')} role="tab" onClick={() => selectTab('docs')}>
           Docs

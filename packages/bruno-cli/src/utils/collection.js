@@ -502,6 +502,7 @@ const processCollectionItems = async (items = [], currentPath) => {
           vars: item.request?.vars || { req: [], res: [] },
           assertions: item.request?.assertions || [],
           tests: item.request?.tests || '',
+          hooks: item.request?.hooks || '',
           docs: item.request?.docs || ''
         }
       };

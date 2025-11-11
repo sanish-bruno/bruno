@@ -374,6 +374,7 @@ const requestSchema = Yup.object({
     .nullable(),
   assertions: Yup.array().of(keyValueSchema).nullable(),
   tests: Yup.string().nullable(),
+  hooks: Yup.string().nullable(),
   docs: Yup.string().nullable()
 })
   .noUnknown(true)
@@ -410,6 +411,7 @@ const grpcRequestSchema = Yup.object({
     .nullable(),
   assertions: Yup.array().of(keyValueSchema).nullable(),
   tests: Yup.string().nullable(),
+  hooks: Yup.string().nullable(),
   docs: Yup.string().nullable(),
 })
   .noUnknown(true)
@@ -448,6 +450,7 @@ const wsRequestSchema = Yup.object({
     .nullable(),
   assertions: Yup.array().of(keyValueSchema).nullable(),
   tests: Yup.string().nullable(),
+  hooks: Yup.string().nullable(),
   docs: Yup.string().nullable()
 })
   .noUnknown(true)

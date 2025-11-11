@@ -267,6 +267,7 @@ const parseBruFileMeta = (data) => {
           vars: {},
           assertions: [],
           tests: '',
+          hooks: '',
           docs: ''
         }
       };
@@ -362,6 +363,7 @@ const transformRequestToSaveToFilesystem = (item) => {
       vars: _item.request.vars,
       assertions: _item.request.assertions,
       tests: _item.request.tests,
+      hooks: _item.request.hooks,
       docs: _item.request.docs
     }
   };

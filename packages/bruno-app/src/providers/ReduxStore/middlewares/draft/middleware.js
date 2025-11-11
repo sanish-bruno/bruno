@@ -28,6 +28,7 @@ const actionsToIntercept = [
   'collections/updateRequestScript',
   'collections/updateResponseScript',
   'collections/updateRequestTests',
+  'collections/updateRequestHooks',
   'collections/updateRequestMethod',
   'collections/addAssertion',
   'collections/updateAssertion',

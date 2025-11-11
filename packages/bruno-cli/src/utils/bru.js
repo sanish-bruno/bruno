@@ -88,7 +88,8 @@ const bruToJson = (bru) => {
         vars: _.get(json, 'vars', []),
         assertions: _.get(json, 'assertions', []),
         script: _.get(json, 'script', {}),
-        tests: _.get(json, 'tests', '')
+        tests: _.get(json, 'tests', ''),
+        hooks: _.get(json, 'hooks', '')
       }
     };
 

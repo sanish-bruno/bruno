@@ -98,6 +98,7 @@ export interface RequestData {
   vars: RequestVars;
   assertions: RequestAssertion[];
   tests: string;
+  hooks: string;
   docs: string;
 }
 
