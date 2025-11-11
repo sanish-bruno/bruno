@@ -7,10 +7,30 @@ const { preferencesUtil } = require('../../store/preferences');
 const { getCertsAndProxyConfig } = require('./cert-utils');
 const { interpolateString } = require('./interpolate-string');
 const path = require('node:path');
+const decomment = require('decomment');
 const prepareGrpcRequest = require('./prepare-grpc-request');
+const { HooksRuntime } = require('@usebruno/js');
+const { getBrunoConfig } = require('../../store/bruno-config');
+const { getDomainsWithCookies } = require('../../utils/cookies');
+const { getProcessEnvVars } = require('../../store/process-env');
+const { getEnvVars } = require('../../utils/collection');
 
 // Creating grpcClient at module level so it can be accessed from window-all-closed event
 let grpcClient;
+
+const getJsSandboxRuntime = (collection) => {
+  const securityConfig = get(collection, 'securityConfig', {});
+
+  if (securityConfig.jsSandboxMode === 'safe') {
+    return 'quickjs';
+  }
+
+  if (preferencesUtil.isBetaFeatureEnabled('nodevm')) {
+    return 'nodevm';
+  }
+
+  return 'vm2';
+};
 
 /**
  * Register IPC handlers for gRPC
@@ -24,6 +44,92 @@ const registerGrpcEventHandlers = (window) => {
     }
   };
 
+  const onConsoleLog = (type, args) => {
+    console[type](...args);
+    if (window && window.webContents) {
+      window.webContents.send('main:console-log', {
+        type,
+        args
+      });
+    }
+  };
+
+  const runHooks = async (options) => {
+    const {
+      request,
+      envVars,
+      collectionPath,
+      collection,
+      collectionUid,
+      runtimeVariables,
+      processEnvVars,
+      scriptingConfig
+    } = options;
+
+    let hooksResult = null;
+    const collectionName = collection?.name;
+    const hooksFile = get(request, 'hooks');
+    if (hooksFile?.length) {
+      const hooksRuntime = new HooksRuntime({ runtime: scriptingConfig?.runtime });
+      hooksResult = await hooksRuntime.runHooks({
+        hooksFile: decomment(hooksFile),
+        request,
+        envVariables: envVars,
+        runtimeVariables,
+        collectionPath,
+        onConsoleLog,
+        processEnvVars,
+        scriptingConfig,
+        collectionName
+      });
+
+      // Store hookManager in request so it can be used later to trigger hooks
+      request.__hookManager = hooksResult.hookManager;
+
+      if (window && window.webContents) {
+        window.webContents.send('main:script-environment-update', {
+          envVariables: hooksResult.envVariables,
+          runtimeVariables: hooksResult.runtimeVariables,
+          persistentEnvVariables: hooksResult.persistentEnvVariables,
+          collectionUid
+        });
+
+        window.webContents.send('main:persistent-env-variables-update', {
+          persistentEnvVariables: hooksResult.persistentEnvVariables,
+          collectionUid
+        });
+
+        window.webContents.send('main:global-environment-variables-update', {
+          globalEnvironmentVariables: hooksResult.globalEnvironmentVariables
+        });
+      }
+
+      collection.globalEnvironmentVariables = hooksResult.globalEnvironmentVariables;
+
+      const domainsWithCookies = await getDomainsWithCookies();
+      if (window && window.webContents) {
+        window.webContents.send('main:cookies-update', safeParseJSON(safeStringifyJSON(domainsWithCookies)));
+      }
+    } else {
+      // Even if no hooks file, create an empty hookManager for potential use
+      const hooksRuntime = new HooksRuntime({ runtime: scriptingConfig?.runtime });
+      hooksResult = await hooksRuntime.runHooks({
+        hooksFile: '',
+        request,
+        envVariables: envVars,
+        runtimeVariables,
+        collectionPath,
+        onConsoleLog,
+        processEnvVars,
+        scriptingConfig,
+        collectionName
+      });
+      request.__hookManager = hooksResult.hookManager;
+    }
+
+    return hooksResult;
+  };
+
   grpcClient = new GrpcClient(sendEvent);
  
   ipcMain.handle('connections-changed', (event) => {
@@ -35,9 +141,48 @@ const registerGrpcEventHandlers = (window) => {
     
     try {
       const requestCopy = cloneDeep(request);
-    
+      const collectionUid = collection.uid;
+      const collectionPath = collection.pathname;
+      const brunoConfig = getBrunoConfig(collectionUid);
+      const scriptingConfig = get(brunoConfig, 'scripts', {});
+      scriptingConfig.runtime = getJsSandboxRuntime(collection);
+      const processEnvVars = getProcessEnvVars(collectionUid);
+      const envVars = getEnvVars(environment);
 
       const preparedRequest = await prepareGrpcRequest(requestCopy, collection, environment, runtimeVariables, {});
+
+      // Create a request object for hooks that includes hooks from the original request
+      // and all the variable properties from preparedRequest
+      const requestForHooks = {
+        ...preparedRequest,
+        hooks: get(requestCopy, 'request.hooks', '')
+      };
+
+      // Run hooks first - before everything else
+      let hooksResult = null;
+      let hooksError = null;
+      try {
+        hooksResult = await runHooks({
+          request: requestForHooks,
+          envVars,
+          collectionPath,
+          collection,
+          collectionUid,
+          runtimeVariables,
+          processEnvVars,
+          scriptingConfig
+        });
+      } catch (error) {
+        console.error('Hooks script error:', error);
+        hooksError = error;
+      }
+
+      if (hooksError) {
+        throw hooksError;
+      }
+
+      // Store hookManager in preparedRequest so it can be used later to trigger hooks
+      preparedRequest.__hookManager = requestForHooks.__hookManager;
 
       // Get certificates and proxy configuration
       const certsAndProxyConfig = await getCertsAndProxyConfig({

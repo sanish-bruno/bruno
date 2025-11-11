@@ -7,7 +7,7 @@ const FormData = require('form-data');
 const prepareRequest = require('./prepare-request');
 const interpolateVars = require('./interpolate-vars');
 const { interpolateString } = require('./interpolate-string');
-const { ScriptRuntime, TestRuntime, VarsRuntime, AssertRuntime } = require('@usebruno/js');
+const { ScriptRuntime, TestRuntime, VarsRuntime, AssertRuntime, HooksRuntime } = require('@usebruno/js');
 const { stripExtension } = require('../utils/filesystem');
 const { getOptions } = require('../utils/bru');
 const https = require('https');
@@ -78,10 +78,46 @@ const runSingleRequest = async function (
 
     const scriptingConfig = get(brunoConfig, 'scripts', {});
     scriptingConfig.runtime = runtime;
+    const collectionName = collection?.brunoConfig?.name;
+
+    // run hooks first - before everything else
+    const hooksFile = get(request, 'hooks');
+    if (hooksFile?.length) {
+      const hooksRuntime = new HooksRuntime({ runtime: scriptingConfig?.runtime });
+      const hooksResult = await hooksRuntime.runHooks({
+        hooksFile: decomment(hooksFile),
+        request,
+        envVariables,
+        runtimeVariables,
+        collectionPath,
+        onConsoleLog,
+        processEnvVars: processEnvVars,
+        scriptingConfig,
+        runRequestByItemPathname: runSingleRequestByPathname,
+        collectionName
+      });
+      // Store hookManager in request so it can be used later to trigger hooks
+      request.__hookManager = hooksResult.hookManager;
+    } else {
+      // Even if no hooks file, create an empty hookManager for potential use
+      const hooksRuntime = new HooksRuntime({ runtime: scriptingConfig?.runtime });
+      const hooksResult = await hooksRuntime.runHooks({
+        hooksFile: '',
+        request,
+        envVariables,
+        runtimeVariables,
+        collectionPath,
+        onConsoleLog,
+        processEnvVars: processEnvVars,
+        scriptingConfig,
+        runRequestByItemPathname: runSingleRequestByPathname,
+        collectionName
+      });
+      request.__hookManager = hooksResult.hookManager;
+    }
 
     // run pre request script
     const requestScriptFile = get(request, 'script.req');
-    const collectionName = collection?.brunoConfig?.name
     if (requestScriptFile?.length) {
       const scriptRuntime = new ScriptRuntime({ runtime: scriptingConfig?.runtime });
       const result = await scriptRuntime.runRequestScript(

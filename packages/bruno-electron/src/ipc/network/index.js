@@ -9,7 +9,7 @@ const FormData = require('form-data');
 const { ipcMain } = require('electron');
 const { each, get, extend, cloneDeep, merge } = require('lodash');
 const { NtlmClient } = require('axios-ntlm');
-const { VarsRuntime, AssertRuntime, ScriptRuntime, TestRuntime } = require('@usebruno/js');
+const { VarsRuntime, AssertRuntime, ScriptRuntime, TestRuntime, HooksRuntime } = require('@usebruno/js');
 const { encodeUrl } = require('@usebruno/common').utils;
 const { interpolateString } = require('./interpolate-string');
 const { resolveAwsV4Credentials, addAwsV4Interceptor } = require('./awsv4auth-helper');
@@ -367,8 +367,84 @@ const registerNetworkIpc = (mainWindow) => {
     });
   };
 
-  const runPreRequest = async (
-    request,
+  const runHooks = async (options) => {
+    const {
+      request,
+      requestUid,
+      envVars,
+      collectionPath,
+      collection,
+      collectionUid,
+      runtimeVariables,
+      processEnvVars,
+      scriptingConfig,
+      runRequestByItemPathname
+    } = options;
+
+    let hooksResult = null;
+    const collectionName = collection?.name;
+    const hooksFile = get(request, 'hooks');
+    if (hooksFile?.length) {
+      const hooksRuntime = new HooksRuntime({ runtime: scriptingConfig?.runtime });
+      hooksResult = await hooksRuntime.runHooks({
+        hooksFile: decomment(hooksFile),
+        request,
+        envVariables: envVars,
+        runtimeVariables,
+        collectionPath,
+        onConsoleLog,
+        processEnvVars,
+        scriptingConfig,
+        runRequestByItemPathname,
+        collectionName
+      });
+
+      // Store hookManager in request so it can be used later to trigger hooks
+      request.__hookManager = hooksResult.hookManager;
+
+      mainWindow.webContents.send('main:script-environment-update', {
+        envVariables: hooksResult.envVariables,
+        runtimeVariables: hooksResult.runtimeVariables,
+        persistentEnvVariables: hooksResult.persistentEnvVariables,
+        requestUid,
+        collectionUid
+      });
+
+      mainWindow.webContents.send('main:persistent-env-variables-update', {
+        persistentEnvVariables: hooksResult.persistentEnvVariables,
+        collectionUid
+      });
+
+      mainWindow.webContents.send('main:global-environment-variables-update', {
+        globalEnvironmentVariables: hooksResult.globalEnvironmentVariables
+      });
+
+      collection.globalEnvironmentVariables = hooksResult.globalEnvironmentVariables;
+
+      const domainsWithCookies = await getDomainsWithCookies();
+      mainWindow.webContents.send('main:cookies-update', safeParseJSON(safeStringifyJSON(domainsWithCookies)));
+    } else {
+      // Even if no hooks file, create an empty hookManager for potential use
+      const hooksRuntime = new HooksRuntime({ runtime: scriptingConfig?.runtime });
+      hooksResult = await hooksRuntime.runHooks({
+        hooksFile: '',
+        request,
+        envVariables: envVars,
+        runtimeVariables,
+        collectionPath,
+        onConsoleLog,
+        processEnvVars,
+        scriptingConfig,
+        runRequestByItemPathname,
+        collectionName
+      });
+      request.__hookManager = hooksResult.hookManager;
+    }
+
+    return hooksResult;
+  };
+
+  const runPreRequest = async (request,
     requestUid,
     envVars,
     collectionPath,
@@ -600,11 +676,41 @@ const registerNetworkIpc = (mainWindow) => {
       request.signal = abortController.signal;
       saveCancelToken(cancelTokenUid, abortController);
 
+      // Run hooks first - before everything else
+      let hooksResult = null;
+      let hooksError = null;
+      try {
+        hooksResult = await runHooks({
+          request,
+          requestUid,
+          envVars,
+          collectionPath,
+          collection,
+          collectionUid,
+          runtimeVariables,
+          processEnvVars,
+          scriptingConfig,
+          runRequestByItemPathname
+        });
+      } catch (error) {
+        hooksError = error;
+      }
+
+      !runInBackground && notifyScriptExecution({
+        channel: 'main:run-request-event',
+        basePayload: { requestUid, collectionUid, itemUid: item.uid },
+        scriptType: 'hooks',
+        error: hooksError
+      });
+
+      if (hooksError) {
+        return Promise.reject(hooksError);
+      }
+
       let preRequestScriptResult = null;
       let preRequestError = null;
       try {
-        preRequestScriptResult = await runPreRequest(
-          request,
+        preRequestScriptResult = await runPreRequest(request,
           requestUid,
           envVars,
           collectionPath,
@@ -1068,11 +1174,35 @@ const registerNetworkIpc = (mainWindow) => {
           const requestUid = uuid();
 
           try {
+            // Run hooks first - before everything else
+            let hooksResult = null;
+            let hooksError = null;
+            try {
+              hooksResult = await runHooks({
+                request,
+                requestUid,
+                envVars,
+                collectionPath,
+                collection,
+                collectionUid,
+                runtimeVariables,
+                processEnvVars,
+                scriptingConfig,
+                runRequestByItemPathname
+              });
+            } catch (error) {
+              console.error('Hooks script error:', error);
+              hooksError = error;
+            }
+
+            if (hooksError) {
+              throw hooksError;
+            }
+
             let preRequestScriptResult;
             let preRequestError = null;
             try {
-              preRequestScriptResult = await runPreRequest(
-                request,
+              preRequestScriptResult = await runPreRequest(request,
                 requestUid,
                 envVars,
                 collectionPath,
