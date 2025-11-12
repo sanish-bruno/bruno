@@ -131,6 +131,9 @@ const registerGrpcEventHandlers = (window) => {
   };
 
   grpcClient = new GrpcClient(sendEvent);
+
+  // Map to store hookManagers by requestId
+  const hookManagers = new Map();
  
   ipcMain.handle('connections-changed', (event) => {
     sendEvent('grpc:connections-changed', event);
@@ -183,6 +186,9 @@ const registerGrpcEventHandlers = (window) => {
 
       // Store hookManager in preparedRequest so it can be used later to trigger hooks
       preparedRequest.__hookManager = requestForHooks.__hookManager;
+
+      // Store hookManager in the Map for later retrieval
+      hookManagers.set(preparedRequest.uid, requestForHooks.__hookManager);
 
       // Get certificates and proxy configuration
       const certsAndProxyConfig = await getCertsAndProxyConfig({
@@ -287,7 +293,25 @@ const registerGrpcEventHandlers = (window) => {
       if (!requestId) {
         throw new Error('Request ID is required');
       }
+
+      // Trigger hooks before ending the request
+      const hookManager = hookManagers.get(requestId);
+      if (hookManager) {
+        try {
+          hookManager.call('grpc:end-request', {
+            requestId,
+            timestamp: Date.now()
+          });
+        } catch (hookError) {
+          console.error('Error executing grpc:end-request hooks:', hookError);
+        }
+      }
+
       grpcClient.end(requestId);
+
+      // Clean up hookManager after ending
+      hookManagers.delete(requestId);
+
       return { success: true };
     } catch (error) {
       console.error('Error ending gRPC stream:', error);
@@ -302,7 +326,25 @@ const registerGrpcEventHandlers = (window) => {
       if (!requestId) {
         throw new Error('Request ID is required');
       }
+
+      // Trigger hooks before canceling the request
+      const hookManager = hookManagers.get(requestId);
+      if (hookManager) {
+        try {
+          hookManager.call('grpc:cancel-request', {
+            requestId,
+            timestamp: Date.now()
+          });
+        } catch (hookError) {
+          console.error('Error executing grpc:cancel-request hooks:', hookError);
+        }
+      }
+
       grpcClient.cancel(requestId);
+
+      // Clean up hookManager after canceling
+      hookManagers.delete(requestId);
+
       return { success: true };
     } catch (error) {
       console.error('Error cancelling gRPC request:', error);
