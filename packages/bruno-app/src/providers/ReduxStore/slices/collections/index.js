@@ -1924,6 +1924,18 @@ export const collectionsSlice = createSlice({
         set(collection, 'draft.root.request.tests', action.payload.tests);
       }
     },
+    updateCollectionHooks: (state, action) => {
+      const collection = findCollectionByUid(state.collections, action.payload.collectionUid);
+
+      if (collection) {
+        if (!collection.draft) {
+          collection.draft = {
+            root: cloneDeep(collection.root)
+          };
+        }
+        set(collection, 'draft.root.request.hooks', action.payload.hooks);
+      }
+    },
     updateCollectionDocs: (state, action) => {
       const collection = findCollectionByUid(state.collections, action.payload.collectionUid);
 
@@ -3276,6 +3288,7 @@ export const {
   updateCollectionRequestScript,
   updateCollectionResponseScript,
   updateCollectionTests,
+  updateCollectionHooks,
   updateCollectionDocs,
   updateCollectionProxy,
   updateCollectionClientCertificates,
