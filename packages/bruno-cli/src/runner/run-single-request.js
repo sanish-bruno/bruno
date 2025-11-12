@@ -6,9 +6,13 @@ const { forOwn, isUndefined, isNull, each, extend, get, compact } = require('lod
 const prepareRequest = require('./prepare-request');
 const interpolateVars = require('./interpolate-vars');
 const { interpolateString, interpolateObject } = require('./interpolate-string');
-const { ScriptRuntime, TestRuntime, VarsRuntime, AssertRuntime } = require('@usebruno/js');
+const { ScriptRuntime, TestRuntime, VarsRuntime, AssertRuntime, HooksRuntime } = require('@usebruno/js');
+const HookManager = require('@usebruno/js/src/hook-manager');
+const BrunoRequest = require('@usebruno/js/src/bruno-request');
+const BrunoResponse = require('@usebruno/js/src/bruno-response');
 const { stripExtension } = require('../utils/filesystem');
 const { getOptions } = require('../utils/bru');
+const { extractHooks, getTreePathFromCollectionToItem, HOOK_EVENTS, getOrCreateHookManager } = require('../utils/collection');
 const https = require('https');
 const { HttpProxyAgent } = require('http-proxy-agent');
 const { SocksProxyAgent } = require('socks-proxy-agent');
@@ -96,7 +100,8 @@ const runSingleRequest = async function (
   runtime,
   collection,
   runSingleRequestByPathname,
-  globalEnvVars = {}
+  globalEnvVars = {},
+  hookManagersMap
 ) {
   const { pathname: itemPathname } = item;
   const relativeItemPathname = path.relative(collectionPath, itemPathname);
@@ -201,9 +206,65 @@ const runSingleRequest = async function (
     // Add certsAndProxyConfig to request object for bru.sendRequest
     request.certsAndProxyConfig = certsAndProxyConfig;
 
+    // Get request tree path for hook extraction
+    const requestTreePath = getTreePathFromCollectionToItem(collection, item);
+    const collectionName = collection?.brunoConfig?.name;
+
+    // Get or create HookManagers for each level using shared map
+    let allHookManagers = [];
+    if (hookManagersMap) {
+      try {
+        const { collectionHooks, folderHooks, requestHooks } = extractHooks(collection, request, requestTreePath);
+
+        const hookManagerOptions = {
+          request,
+          envVars: envVariables, // Will be mapped to envVariables in runHooks
+          runtimeVariables,
+          collectionPath,
+          onConsoleLog,
+          processEnvVars,
+          scriptingConfig,
+          runRequestByItemPathname: runSingleRequestByPathname,
+          collectionName
+        };
+
+        // Collection-level HookManager (shared across all requests)
+        const collectionHookManagerKey = `collection:${collection.pathname}`;
+        const collectionHookManager = await getOrCreateHookManager(hookManagersMap, collectionHookManagerKey, collectionHooks, hookManagerOptions);
+
+        // Folder-level HookManagers (in order from collection to request)
+        const folderHookManagers = [];
+        for (const folderHook of folderHooks) {
+          // folderPathname is set by extractHooks (i.pathname)
+          const folderHookManagerKey = `folder:${folderHook.folderPathname}`;
+          const folderHookManager = await getOrCreateHookManager(hookManagersMap, folderHookManagerKey, folderHook.hooks, hookManagerOptions);
+          folderHookManagers.push(folderHookManager);
+        }
+
+        // Request-level HookManager (unique per request)
+        const requestHookManagerKey = item.pathname;
+        const requestHookManager = await getOrCreateHookManager(hookManagersMap, requestHookManagerKey, requestHooks, hookManagerOptions);
+
+        // Combine all HookManagers in order: collection -> folder(s) -> request
+        allHookManagers = [collectionHookManager, ...folderHookManagers, requestHookManager];
+      } catch (error) {
+        console.error('Error getting/creating hook managers:', error);
+      }
+    }
+
+    // Call beforeRequest hooks before running pre-request scripts
+    // Hooks are called in registration order: collection -> folder(s) -> request
+    for (const hookManager of allHookManagers) {
+      try {
+        const req = new BrunoRequest(request);
+        await hookManager.call(HOOK_EVENTS.HTTP_BEFORE_REQUEST, { request, req, collection });
+      } catch (error) {
+        console.error('Error calling beforeRequest hooks:', error);
+      }
+    }
+
     // run pre request script
     const requestScriptFile = get(request, 'script.req');
-    const collectionName = collection?.brunoConfig?.name;
     if (requestScriptFile?.length) {
       const scriptRuntime = new ScriptRuntime({ runtime: scriptingConfig?.runtime });
       try {
@@ -226,7 +287,12 @@ const runSingleRequest = async function (
         }
 
         if (result?.skipRequest) {
-          return {
+          // Clean up request-level hook manager if request is skipped
+        if (hookManagersMap && allHookManagers.length > 0) {
+          const requestHookManagerKey = item.pathname;
+          hookManagersMap.delete(requestHookManagerKey);
+        }
+        return {
             test: {
               filename: relativeItemPathname
             },
@@ -653,6 +719,7 @@ const runSingleRequest = async function (
 
       if (request.ntlmConfig) {
         axiosInstance = NtlmClient(request.ntlmConfig, axiosInstance.defaults);
+
         delete request.ntlmConfig;
       }
 
@@ -745,6 +812,26 @@ const runSingleRequest = async function (
 
     // Log pre-request test results
     logResults(preRequestTestResults, 'Pre-Request Tests');
+
+    // Call afterResponse hooks after response is received but before post-response scripts
+    // Hooks are called in registration order: collection -> folder(s) -> request
+    for (const hookManager of allHookManagers) {
+      try {
+        const req = new BrunoRequest(request);
+        const res = new BrunoResponse(response);
+        await hookManager.call(HOOK_EVENTS.HTTP_AFTER_RESPONSE, { request, response, req, res, collection });
+      } catch (error) {
+        console.error('Error calling afterResponse hooks:', error);
+      }
+    }
+
+    // Clean up request-level hook manager after request completes
+    // Requests are only run once, so we can safely remove the hook manager to free memory
+    // TODO: we probably don't even have to store the request level hook manager in the first place
+    if (hookManagersMap && allHookManagers.length > 0) {
+      const requestHookManagerKey = item.pathname;
+      hookManagersMap.delete(requestHookManagerKey);
+    }
 
     // run post-response vars
     const postResponseVars = get(item, 'request.vars.res');
@@ -915,6 +1002,11 @@ const runSingleRequest = async function (
       shouldStopRunnerExecution
     };
   } catch (err) {
+    // Clean up request-level hook manager on error
+    if (hookManagersMap) {
+      const requestHookManagerKey = item.pathname;
+      hookManagersMap.delete(requestHookManagerKey);
+    }
     console.log(chalk.red(stripExtension(relativeItemPathname)) + chalk.dim(` (${err.message})`));
     return {
       test: {

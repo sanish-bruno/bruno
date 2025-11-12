@@ -7,6 +7,8 @@ const { jar: createCookieJar } = require('@usebruno/requests').cookies;
 const variableNameRegex = /^[\w-.]*$/;
 
 class Bru {
+  // Private class field - truly private, not accessible from outside the class
+  #hookManager;
   /**
    * @param {string} runtime - The runtime environment ('quickjs' or 'nodevm')
    * @param {object} envVariables - Environment variables
@@ -27,7 +29,7 @@ class Bru {
    * @param {object} [certsAndProxyConfig.collectionLevelProxy] - Collection-level proxy settings
    * @param {object} [certsAndProxyConfig.systemProxyConfig] - System proxy configuration
    */
-  constructor(runtime, envVariables, runtimeVariables, processEnvVars, collectionPath, collectionVariables, folderVariables, requestVariables, globalEnvironmentVariables, oauth2CredentialVariables, collectionName, promptVariables, certsAndProxyConfig) {
+  constructor(runtime, envVariables, runtimeVariables, processEnvVars, collectionPath, collectionVariables, folderVariables, requestVariables, globalEnvironmentVariables, oauth2CredentialVariables, collectionName, promptVariables, certsAndProxyConfig, hookManager) {
     this.envVariables = envVariables || {};
     this.runtimeVariables = runtimeVariables || {};
     this.promptVariables = promptVariables || {};
@@ -40,6 +42,9 @@ class Bru {
     this.collectionPath = collectionPath;
     this.collectionName = collectionName;
     // Use createSendRequest with config if provided, otherwise use default sendRequest
+    // Store HookManager in private class field - truly private, not accessible from outside
+    this.#hookManager = hookManager || null;
+    this._initializeHooksConvenienceMethods();
     this.sendRequest = certsAndProxyConfig ? createSendRequest(certsAndProxyConfig) : sendRequest;
     this.runtime = runtime;
     this.cookies = {
@@ -382,6 +387,56 @@ class Bru {
 
   isSafeMode() {
     return this.runtime === 'quickjs';
+  }
+
+  /**
+   * Initialize hooks convenience methods if hookManager is available
+   * This creates a namespaced hooks object with only the convenience methods
+   * The HookManager itself is kept private using a private class field - truly inaccessible from outside
+   */
+  _initializeHooksConvenienceMethods() {
+    if (!this.#hookManager) {
+      // Create empty hooks object if no hookManager
+      this.hooks = {
+        runner: {},
+        http: {}
+      };
+      return;
+    }
+
+    // Create namespaced hooks object with only convenience methods
+    // Users cannot access the HookManager directly (no .on() or .call() methods)
+    // The HookManager is stored in a private class field and is truly private
+    this.hooks = {
+      runner: {
+        onBeforeCollectionRun: (handler) => {
+          if (!this.#hookManager) {
+            throw new Error('HookManager is not available');
+          }
+          return this.#hookManager.on('runner:beforeCollectionRun', handler);
+        },
+        onAfterCollectionRun: (handler) => {
+          if (!this.#hookManager) {
+            throw new Error('HookManager is not available');
+          }
+          return this.#hookManager.on('runner:afterCollectionRun', handler);
+        }
+      },
+      http: {
+        onBeforeRequest: (handler) => {
+          if (!this.#hookManager) {
+            throw new Error('HookManager is not available');
+          }
+          return this.#hookManager.on('http:beforeRequest', handler);
+        },
+        onAfterResponse: (handler) => {
+          if (!this.#hookManager) {
+            throw new Error('HookManager is not available');
+          }
+          return this.#hookManager.on('http:afterResponse', handler);
+        }
+      }
+    };
   }
 }
 
