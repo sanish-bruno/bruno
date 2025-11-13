@@ -5,18 +5,18 @@
  *
  * Usage examples:
  *
- * // Register a handler for a single event
+ * Register a handler for a single event
  * bru.hooks.on('grpc:start-connection', (context) => { ... });
  *
- * // Register a handler for multiple events (including wildcard)
+ * Register a handler for multiple events (including wildcard)
  * const unhook = bru.hooks.on(['grpc:start-connection', '*'], (context) => { ... });
  *
- * // unregister handler by calling `unhook`
+ * Unregister handler by calling `unhook`
  * unhook()
- * // or unregister for a specific pattern
+ * or unregister for a specific pattern
  * unhook('grpc:start-connection')
  *
- * // Call hooks for a single event (internal use)
+ * Call hooks for a single event (internal use)
  * hookManager.call('grpc:start-connection', context);
  *
  * @class
@@ -125,6 +125,33 @@ class HookManager {
         self.listeners[ptn] = self.listeners[ptn].filter((d) => !Object.is(d, handler));
       }
     };
+  }
+
+  /**
+   * Clear all handlers for the given pattern(s)
+   * @param {string|string[]} pattern - Event pattern(s) to clear
+   */
+  clear(pattern) {
+    if (typeof pattern !== 'string' && !Array.isArray(pattern)) {
+      throw new TypeError('Pattern must be a string or an array of strings.');
+    }
+
+    const patternList = [].concat(pattern).map((d) => String(d).trim());
+
+    for (const ptn of patternList) {
+      if (ptn === '*') {
+        this.listeners['*'] = [];
+      } else if (this.listeners[ptn]) {
+        delete this.listeners[ptn];
+      }
+    }
+  }
+
+  /**
+   * Clear all registered handlers
+   */
+  clearAll() {
+    this.listeners = {};
   }
 }
 

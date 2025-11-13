@@ -52,6 +52,7 @@ class HooksRuntime {
    * @param {object} options.scriptingConfig - Scripting configuration
    * @param {function} [options.runRequestByItemPathname] - Function to run requests
    * @param {string} options.collectionName - Collection name
+   * @param {HookManager} [options.hookManager] - Existing HookManager instance to use (for shared hook registration)
    * @returns {object} Result containing the hookManager instance
    */
   async runHooks(options) {
@@ -65,7 +66,8 @@ class HooksRuntime {
       processEnvVars,
       scriptingConfig,
       runRequestByItemPathname,
-      collectionName
+      collectionName,
+      hookManager: existingHookManager
     } = options;
     const globalEnvironmentVariables = request?.globalEnvironmentVariables || {};
     const oauth2CredentialVariables = request?.oauth2CredentialVariables || {};
@@ -74,8 +76,8 @@ class HooksRuntime {
     const requestVariables = request?.requestVariables || {};
     const bru = new Bru(envVariables, runtimeVariables, processEnvVars, collectionPath, collectionVariables, folderVariables, requestVariables, globalEnvironmentVariables, oauth2CredentialVariables, collectionName);
 
-    // Initialize HookManager and attach to bru
-    const hookManager = new HookManager();
+    // Use existing HookManager if provided, otherwise create new one
+    const hookManager = existingHookManager || new HookManager();
     bru.hooks = hookManager;
 
     const allowScriptFilesystemAccess = get(scriptingConfig, 'filesystemAccess.allow', false);
@@ -123,6 +125,9 @@ class HooksRuntime {
     if (runRequestByItemPathname) {
       context.bru.runRequest = runRequestByItemPathname;
     }
+
+    // Ensure bru.hooks is accessible in the context (important for VM sandbox)
+    context.bru.hooks = hookManager;
 
     // If no hooks file, return early with the hookManager
     if (!hooksFile || !hooksFile.length) {
