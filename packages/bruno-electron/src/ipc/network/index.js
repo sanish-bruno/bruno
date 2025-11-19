@@ -451,7 +451,7 @@ const registerNetworkIpc = (mainWindow) => {
             collectionName,
             hookManager
           });
-          const commonPatterns = ['onBeforeRequest', 'onAfterResponse', '*'];
+          const commonPatterns = ['beforeRequest', 'afterResponse', '*'];
           const contentHash = hookManagerStore._hashContent(collectionHooks);
           hookManagerStore.markLevelRegistered(collectionUid, level, contentHash, commonPatterns);
         } catch (error) {
@@ -510,7 +510,7 @@ const registerNetworkIpc = (mainWindow) => {
               collectionName,
               hookManager
             });
-            const commonPatterns = ['onBeforeRequest', 'onAfterResponse', '*'];
+            const commonPatterns = ['beforeRequest', 'afterResponse', '*'];
             const contentHash = hookManagerStore._hashContent(folderHook.hooks);
             hookManagerStore.markLevelRegistered(collectionUid, levelKey, contentHash, commonPatterns);
           } catch (error) {
@@ -574,7 +574,7 @@ const registerNetworkIpc = (mainWindow) => {
             hookManager
           });
           // Track common patterns that might be registered (we can't know all patterns, so track common ones)
-          const commonPatterns = ['onBeforeRequest', 'onAfterResponse', '*'];
+          const commonPatterns = ['beforeRequest', 'afterResponse', '*'];
           const contentHash = hookManagerStore._hashContent(collectionHooks);
           hookManagerStore.markLevelRegistered(collectionUid, level, contentHash, commonPatterns);
         } catch (error) {
@@ -612,7 +612,7 @@ const registerNetworkIpc = (mainWindow) => {
             hookManager
           });
           // Track common patterns that might be registered
-          const commonPatterns = ['onBeforeRequest', 'onAfterResponse', '*'];
+          const commonPatterns = ['beforeRequest', 'afterResponse', '*'];
           const contentHash = hookManagerStore._hashContent(folderHook.hooks);
           hookManagerStore.markLevelRegistered(collectionUid, levelKey, contentHash, commonPatterns);
         } catch (error) {
@@ -651,7 +651,7 @@ const registerNetworkIpc = (mainWindow) => {
             hookManager
           });
           // Track common patterns that might be registered
-          const commonPatterns = ['onBeforeRequest', 'onAfterResponse', '*'];
+          const commonPatterns = ['beforeRequest', 'afterResponse', '*'];
           const contentHash = hookManagerStore._hashContent(requestHooks);
           hookManagerStore.markLevelRegistered(collectionUid, levelKey, contentHash, commonPatterns);
         } catch (error) {
@@ -923,7 +923,7 @@ const registerNetworkIpc = (mainWindow) => {
         try {
           // Create req object for hook callbacks (res is not available yet)
           const req = new BrunoRequest(request);
-          hookManager.call('onBeforeRequest', { request, req, collection, collectionUid });
+          hookManager.call('beforeRequest', { request, req, collection, collectionUid });
         } catch (error) {
           console.error('Error calling pre-request hooks:', error);
           onConsoleLog?.('error', [`Error calling pre-request hooks: ${error.message}`]);
@@ -1087,7 +1087,7 @@ const registerNetworkIpc = (mainWindow) => {
           // Create req and res objects for hook callbacks
           const req = new BrunoRequest(request);
           const res = new BrunoResponse(response);
-          postResponseHookManager.call('onAfterResponse', { request, response, req, res, collection, collectionUid });
+          postResponseHookManager.call('afterResponse', { request, response, req, res, collection, collectionUid });
         } catch (error) {
           console.error('Error calling post-response hooks:', error);
           onConsoleLog?.('error', [`Error calling post-response hooks: ${error.message}`]);
@@ -1467,7 +1467,7 @@ const registerNetworkIpc = (mainWindow) => {
               try {
                 // Create req object for hook callbacks (res is not available yet)
                 const req = new BrunoRequest(request);
-                hookManager.call('onBeforeRequest', { request, req, collection, collectionUid });
+                hookManager.call('beforeRequest', { request, req, collection, collectionUid });
               } catch (error) {
                 console.error('Error calling pre-request hooks:', error);
               }
@@ -1697,7 +1697,7 @@ const registerNetworkIpc = (mainWindow) => {
                 // Create req and res objects for hook callbacks
                 const req = new BrunoRequest(request);
                 const res = new BrunoResponse(response);
-                postResponseHookManager.call('onAfterResponse', { request, response, req, res, collection, collectionUid });
+                postResponseHookManager.call('afterResponse', { request, response, req, res, collection, collectionUid });
               } catch (error) {
                 console.error('Error calling post-response hooks:', error);
               }

@@ -1,9 +1,7 @@
 const { cleanJson, cleanCircularJson } = require('../../../utils');
 const { marshallToVm } = require('../utils');
-const addBrunoRequestShimToContext = require('./bruno-request');
-const addBrunoResponseShimToContext = require('./bruno-response');
-const BrunoRequest = require('../../../bruno-request');
-const BrunoResponse = require('../../../bruno-response');
+const { createBrunoRequestShim } = require('./bruno-request');
+const { createBrunoResponseShim } = require('./bruno-response');
 
 const addBruShimToContext = (vm, bru) => {
   const bruObject = vm.newObject();
@@ -396,134 +394,117 @@ const addBruShimToContext = (vm, bru) => {
   if (bru.hooks) {
     const hooksObject = vm.newObject();
 
-    // Store handler code and metadata for later execution
-    // We attach this to the bru object so it persists
-    if (!bru.__quickjsHookHandlers) {
-      bru.__quickjsHookHandlers = new Map();
-    }
-    if (!bru.__quickjsHookContext) {
-      bru.__quickjsHookContext = {
-        collectionPath: bru.collectionPath,
-        collectionName: bru.collectionName
-      };
-    }
-
-    const onFn = vm.newFunction('on', (pattern, handler) => {
-      const dumpedPattern = vm.dump(pattern);
-      const handlerId = Symbol('handler');
-
-      // Try to get the handler code as a string
-      let handlerCode = '';
+    // Extract handler function code as string
+    const extractHandlerCode = (handler) => {
       try {
-        // Evaluate handler.toString() in QuickJS to get the function source
         const toStringResult = vm.callFunction(vm.getProp(handler, 'toString'), handler);
         if (!toStringResult.error) {
-          handlerCode = vm.dump(toStringResult.value);
+          const code = vm.dump(toStringResult.value);
           toStringResult.value.dispose();
-        } else {
-          toStringResult.error.dispose();
+          return code;
         }
+        toStringResult.error.dispose();
       } catch (error) {
         console.warn('Could not extract handler code:', error);
       }
+      return '';
+    };
 
-      // Store handler metadata
-      bru.__quickjsHookHandlers.set(handlerId, {
-        pattern: dumpedPattern,
-        code: handlerCode,
-        vm: vm // Store reference to current VM for immediate calls
-      });
 
-      // Create a native handler that will execute the QuickJS code
-      const nativeHandler = (data) => {
-        const handlerInfo = bru.__quickjsHookHandlers.get(handlerId);
-        if (!handlerInfo || !handlerInfo.code) {
-          return;
+    // Execute handler code using the VM passed as parameter
+    const executeHandler = (handlerCode, data) => {
+      try {
+        // Prepare data (clean circular refs)
+        const cleanedData = { ...cleanCircularJson(data) };
+
+        // Create req/res shim objects and add to data object
+        const dataHandle = vm.newObject();
+
+        // Add all cleaned data properties
+        Object.keys(cleanedData).forEach((key) => {
+          if (key !== 'req' && key !== 'res') {
+            const value = marshallToVm(cleanedData[key], vm);
+            vm.setProp(dataHandle, key, value);
+            value.dispose();
+          }
+        });
+
+        // Add req/res shim objects to data if provided
+        if (data.req) {
+          const reqShim = createBrunoRequestShim(vm, data.req);
+          vm.setProp(dataHandle, 'req', reqShim);
+          reqShim.dispose();
         }
 
-        // Try to use the stored VM if it's still valid
-        const vmContext = handlerInfo.vm;
-        if (!vmContext) {
-          return;
+        if (data.res) {
+          const resShim = createBrunoResponseShim(vm, data.res);
+          vm.setProp(dataHandle, 'res', resShim);
+          resShim.dispose();
         }
 
-        // Check if VM is still valid by trying a simple operation
-        try {
-          // Create req and res objects from data if available
-          // These will be made available in the handler execution context
-          if (data.req || data.request) {
-            // Create BrunoRequest instance and shim it to global scope
-            const req = data.req instanceof BrunoRequest ? data.req : new BrunoRequest(data.request);
-            addBrunoRequestShimToContext(vmContext, req);
-          }
-
-          if (data.res || data.response) {
-            // Create BrunoResponse instance and shim it to global scope
-            const res = data.res instanceof BrunoResponse ? data.res : new BrunoResponse(data.response);
-            addBrunoResponseShimToContext(vmContext, res);
-          }
-
-          // Create a wrapper that calls the handler with the data
-          // Use cleanCircularJson to handle circular references, but preserve req/res
-          const cleanedData = cleanCircularJson(data);
-          // Remove req/res from cleanedData since they're available as global shims
-          delete cleanedData.req;
-          delete cleanedData.res;
-          const dataStr = JSON.stringify(cleanedData);
-
-          // Build call code with req and res available from global scope
-          let callCode = `(function() { try { const handler = ${handlerInfo.code}; const data = ${dataStr};`;
-          if (data.req || data.request) {
-            callCode += ` data.req = req;`;
-          }
-          if (data.res || data.response) {
-            callCode += ` data.res = res;`;
-          }
-          callCode += ` return handler(data); } catch(e) { console.error('Hook handler error:', e); } })();`;
-
-          const result = vmContext.evalCode(callCode);
-
-          // Clean up global req/res after execution by setting to undefined
-          if (data.req || data.request) {
-            vmContext.setProp(vmContext.global, 'req', vmContext.undefined);
-          }
-          if (data.res || data.response) {
-            vmContext.setProp(vmContext.global, 'res', vmContext.undefined);
-          }
-          if (result.error) {
-            const error = vmContext.dump(result.error);
-            result.error.dispose();
-            // Only log if it's not a UseAfterFree error
-            const errorMsg = error?.message || String(error);
-            if (errorMsg && !errorMsg.includes('UseAfterFree') && !errorMsg.includes('Lifetime not alive')) {
-              console.error('Error in hook handler:', error);
+        // Execute handler - req/res are in data object, accessible via data.req/data.res or destructuring
+        // Create the handler function in the VM
+        const handlerCodeWithWrapper = `
+          (function(data) {
+            try {
+              const handler = ${handlerCode};
+              return handler(data);
+            } catch(e) {
+              console.error('Hook handler error:', e);
             }
-          } else {
-            result.value.dispose();
-          }
-        } catch (error) {
-          // VM context is no longer valid (UseAfterFree error)
-          // This is expected when the VM has been disposed
-          // Check if it's a UseAfterFree error and silently skip
-          const errorMsg = error?.message || error?.toString() || String(error);
-          if (errorMsg.includes('UseAfterFree') || errorMsg.includes('Lifetime not alive')) {
-            // Silently skip - this is expected when VM context is disposed
-            return;
-          }
-          // For other errors, log them
-          console.error('Error calling hook handler:', error);
+          })
+        `;
+
+        const handlerFnResult = vm.evalCode(handlerCodeWithWrapper);
+        if (handlerFnResult.error) {
+          const error = vm.dump(handlerFnResult.error);
+          handlerFnResult.error.dispose();
+          console.error('Error creating handler function:', error);
+          dataHandle.dispose();
+          return;
         }
+
+        const result = vm.callFunction(handlerFnResult.value, vm.undefined, dataHandle);
+
+        handlerFnResult.value.dispose();
+        dataHandle.dispose();
+
+        if (result.error) {
+          const error = vm.dump(result.error);
+          result.error.dispose();
+          // Check if it's a VM disposal error (expected when VM is disposed)
+          const errorMsg = error?.message || error?.toString() || String(error);
+          if (!errorMsg.includes('UseAfterFree') && !errorMsg.includes('Lifetime not alive')) {
+            console.error('Error in hook handler:', error);
+          }
+        } else {
+          result.value.dispose();
+        }
+      } catch (error) {
+        // Silently skip VM disposal errors (expected when VM is disposed)
+        const errorMsg = error?.message || error?.toString() || String(error);
+        if (!errorMsg.includes('UseAfterFree') && !errorMsg.includes('Lifetime not alive')) {
+          console.error('Error executing hook handler:', error);
+        }
+      }
+    };
+
+    const onFn = vm.newFunction('on', (pattern, handler) => {
+      const dumpedPattern = vm.dump(pattern);
+      const handlerCode = extractHandlerCode(handler);
+
+      // Create native handler that executes the code when hook fires
+      // handlerCode is captured in the closure - no need to store in Map
+      const nativeHandler = (data) => {
+        executeHandler(handlerCode, data);
       };
 
-      // Register the handler with the native HookManager
+      // Register with native HookManager
       const unhook = bru.hooks.on(dumpedPattern, nativeHandler);
 
-      // Return an unhook function that can be called from the VM
+      // Return unhook function callable from VM
       const unhookFn = vm.newFunction('unhook', (specific) => {
-        const dumpedSpecific = vm.dump(specific);
-        unhook(dumpedSpecific);
-        // Clean up the stored handler
-        bru.__quickjsHookHandlers.delete(handlerId);
+        unhook(vm.dump(specific));
       });
 
       return unhookFn;
