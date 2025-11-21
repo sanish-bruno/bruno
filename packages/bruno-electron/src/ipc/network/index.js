@@ -1270,10 +1270,6 @@ const registerNetworkIpc = (mainWindow) => {
       if (isCollectionRun) {
         const collectionHookManager = hookManagersMap.get(collectionHookManagerKey);
         collectionHookManager.call(HOOK_EVENTS.COLLECTION_RUN_START, { collection, collectionUid });
-      } else {
-        const folderHookManagerKey = `folder:${folder.uid}`;
-        const folderHookManager = hookManagersMap.get(folderHookManagerKey);
-        folderHookManager.call(HOOK_EVENTS.FOLDER_RUN_START, { folder, folderUid, collection, collectionUid });
       }
 
       mainWindow.webContents.send('main:run-folder-event', {
@@ -1379,7 +1375,7 @@ const registerNetworkIpc = (mainWindow) => {
             const folderInfo = folderStack[i];
             const folderHookManagerKey = `folder:${folderInfo.folderUid}`;
             const folderHookManager = hookManagersMap.get(folderHookManagerKey);
-            if (folderHookManager) {
+            if (folderHookManager && typeof folderHookManager.call === 'function') {
               try {
                 folderHookManager.call(HOOK_EVENTS.FOLDER_RUN_END, {
                   folder: folderInfo.folder,
@@ -1401,37 +1397,35 @@ const registerNetworkIpc = (mainWindow) => {
             const folderItem = findItemInCollectionByPathname(collection, folderPathname);
 
             if (folderItem && folderItem.type === 'folder') {
-              // Register folder hooks if not already registered
+              // Always create/register folder hooks (even if empty) so we can call folder run start/end events
               const folderHookManagerKey = `folder:${folderItem.uid}`;
-              if (!hookManagersMap.has(folderHookManagerKey)) {
+              let folderHookManager = hookManagersMap.get(folderHookManagerKey);
+              if (!folderHookManager) {
                 const folderRoot = folderItem?.draft || folderItem?.root || {};
-                const folderHooks = get(folderRoot, 'request.hooks', '');
-                if (folderHooks && folderHooks.trim() !== '') {
-                  const placeholderRequest = {};
-                  const folderHookManagerOptions = {
-                    request: placeholderRequest,
-                    envVars,
-                    runtimeVariables,
-                    collectionPath,
-                    processEnvVars,
-                    scriptingConfig,
-                    runRequestByItemPathname,
-                    collectionName: collection?.name,
-                    onConsoleLog: (type, args) => {
-                      console[type](...args);
-                      mainWindow.webContents.send('main:console-log', {
-                        type,
-                        args
-                      });
-                    }
-                  };
-                  await getOrCreateHookManager(hookManagersMap, folderHookManagerKey, folderHooks, folderHookManagerOptions);
-                }
+                const folderHooks = get(folderRoot, 'request.hooks', '') || '';
+                const placeholderRequest = {};
+                const folderHookManagerOptions = {
+                  request: placeholderRequest,
+                  envVars,
+                  runtimeVariables,
+                  collectionPath,
+                  processEnvVars,
+                  scriptingConfig,
+                  runRequestByItemPathname,
+                  collectionName: collection?.name,
+                  onConsoleLog: (type, args) => {
+                    console[type](...args);
+                    mainWindow.webContents.send('main:console-log', {
+                      type,
+                      args
+                    });
+                  }
+                };
+                folderHookManager = await getOrCreateHookManager(hookManagersMap, folderHookManagerKey, folderHooks, folderHookManagerOptions);
               }
 
               // Call folder run start hook
-              const folderHookManager = hookManagersMap.get(folderHookManagerKey);
-              if (folderHookManager) {
+              if (folderHookManager && typeof folderHookManager.call === 'function') {
                 try {
                   folderHookManager.call(HOOK_EVENTS.FOLDER_RUN_START, {
                     folder: folderItem,
@@ -1978,7 +1972,7 @@ const registerNetworkIpc = (mainWindow) => {
           const folderInfo = folderStack[i];
           const folderHookManagerKey = `folder:${folderInfo.folderUid}`;
           const folderHookManager = hookManagersMap.get(folderHookManagerKey);
-          if (folderHookManager) {
+          if (folderHookManager && typeof folderHookManager.call === 'function') {
             try {
               folderHookManager.call(HOOK_EVENTS.FOLDER_RUN_END, {
                 folder: folderInfo.folder,
@@ -1998,12 +1992,6 @@ const registerNetworkIpc = (mainWindow) => {
           const collectionHookManager = hookManagersMap.get(collectionHookManagerKey);
           if (collectionHookManager) {
             collectionHookManager.call(HOOK_EVENTS.COLLECTION_RUN_END, { collection, collectionUid });
-          }
-        } else {
-          const folderHookManagerKey = `folder:${folder.uid}`;
-          const folderHookManager = hookManagersMap.get(folderHookManagerKey);
-          if (folderHookManager) {
-            folderHookManager.call(HOOK_EVENTS.FOLDER_RUN_END, { folder, folderUid, collection, collectionUid });
           }
         }
 
@@ -2025,7 +2013,7 @@ const registerNetworkIpc = (mainWindow) => {
           const folderInfo = folderStack[i];
           const folderHookManagerKey = `folder:${folderInfo.folderUid}`;
           const folderHookManager = hookManagersMap.get(folderHookManagerKey);
-          if (folderHookManager) {
+          if (folderHookManager && typeof folderHookManager.call === 'function') {
             try {
               folderHookManager.call(HOOK_EVENTS.FOLDER_RUN_END, {
                 folder: folderInfo.folder,
