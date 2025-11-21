@@ -1315,7 +1315,11 @@ const registerNetworkIpc = (mainWindow) => {
             runRequestByItemPathname,
             collectionName: collection?.name,
             onConsoleLog: (type, args) => {
-              console.log(`[Hook Registration] ${type}:`, args);
+              console[type](...args);
+              mainWindow.webContents.send('main:console-log', {
+                type,
+                args
+              });
             }
           };
 
