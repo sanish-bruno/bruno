@@ -1,42 +1,13 @@
-const { NodeVM } = require('@usebruno/vm2');
 const { runScriptInNodeVm } = require('../sandbox/node-vm');
-const path = require('path');
-const http = require('http');
-const https = require('https');
-const stream = require('stream');
-const util = require('util');
-const zlib = require('zlib');
-const url = require('url');
-const punycode = require('punycode');
-const fs = require('fs');
 const { get } = require('lodash');
 const Bru = require('../bru');
 const HookManager = require('../hook-manager');
 const { cleanJson } = require('../utils');
 const { mixinTypedArrays } = require('../sandbox/mixins/typed-arrays');
 const { executeQuickJsVmAsync } = require('../sandbox/quickjs');
-
-// Inbuilt Library Support
-const ajv = require('ajv');
-const addFormats = require('ajv-formats');
-const atob = require('atob');
-const btoa = require('btoa');
-const lodash = require('lodash');
-const moment = require('moment');
-const uuid = require('uuid');
-const nanoid = require('nanoid');
-const axios = require('axios');
-const fetch = require('node-fetch');
-const CryptoJS = require('crypto-js');
-const NodeVault = require('node-vault');
-const xml2js = require('xml2js');
-const cheerio = require('cheerio');
-const tv4 = require('tv4');
-const jsonwebtoken = require('jsonwebtoken');
-
 class HooksRuntime {
   constructor(props) {
-    this.runtime = props?.runtime || 'vm2';
+    this.runtime = props?.runtime || 'quickjs';
   }
 
   /**
@@ -67,7 +38,7 @@ class HooksRuntime {
       scriptingConfig,
       runRequestByItemPathname,
       collectionName,
-      hookManager: existingHookManager
+      hookManager
     } = options;
     const globalEnvironmentVariables = request?.globalEnvironmentVariables || {};
     const oauth2CredentialVariables = request?.oauth2CredentialVariables || {};
@@ -76,18 +47,9 @@ class HooksRuntime {
     const requestVariables = request?.requestVariables || {};
     const bru = new Bru(envVariables, runtimeVariables, processEnvVars, collectionPath, collectionVariables, folderVariables, requestVariables, globalEnvironmentVariables, oauth2CredentialVariables, collectionName);
 
-    // Use existing HookManager if provided, otherwise create new one
-    const hookManager = existingHookManager || new HookManager();
     bru.hooks = hookManager;
 
-    const allowScriptFilesystemAccess = get(scriptingConfig, 'filesystemAccess.allow', false);
     const moduleWhitelist = get(scriptingConfig, 'moduleWhitelist', []);
-    const additionalContextRoots = get(scriptingConfig, 'additionalContextRoots', []);
-    const additionalContextRootsAbsolute = lodash
-      .chain(additionalContextRoots)
-      .map((acr) => (acr.startsWith('/') ? acr : path.join(collectionPath, acr)))
-      .value();
-
     const whitelistedModules = {};
 
     for (let module of moduleWhitelist) {
@@ -173,58 +135,6 @@ class HooksRuntime {
         globalEnvironmentVariables: cleanJson(globalEnvironmentVariables)
       };
     }
-
-    // default runtime is vm2
-    const vm = new NodeVM({
-      sandbox: context,
-      require: {
-        context: 'sandbox',
-        builtin: ['*'],
-        external: true,
-        root: [collectionPath, ...additionalContextRootsAbsolute],
-        mock: {
-          // node libs
-          path,
-          stream,
-          util,
-          url,
-          http,
-          https,
-          punycode,
-          zlib,
-          // 3rd party libs
-          ajv,
-          'ajv-formats': addFormats,
-          atob,
-          btoa,
-          lodash,
-          moment,
-          uuid,
-          nanoid,
-          axios,
-          'node-fetch': fetch,
-          'crypto-js': CryptoJS,
-          'xml2js': xml2js,
-          jsonwebtoken,
-          cheerio,
-          tv4,
-          ...whitelistedModules,
-          'fs': allowScriptFilesystemAccess ? fs : undefined,
-          'node-vault': NodeVault
-        }
-      }
-    });
-
-    const asyncVM = vm.run(`module.exports = async () => { ${hooksFile} }`, path.join(collectionPath, 'vm.js'));
-    await asyncVM();
-
-    return {
-      hookManager,
-      envVariables: cleanJson(envVariables),
-      runtimeVariables: cleanJson(runtimeVariables),
-      persistentEnvVariables: bru.persistentEnvVariables,
-      globalEnvironmentVariables: cleanJson(globalEnvironmentVariables)
-    };
   }
 }
 
