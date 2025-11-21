@@ -51,9 +51,7 @@ const HOOK_EVENTS = Object.freeze({
   BEFORE_REQUEST: 'beforeRequest',
   AFTER_RESPONSE: 'afterResponse',
   COLLECTION_RUN_START: 'collectionRunStart',
-  COLLECTION_RUN_END: 'collectionRunEnd',
-  FOLDER_RUN_START: 'folderRunStart',
-  FOLDER_RUN_END: 'folderRunEnd'
+  COLLECTION_RUN_END: 'collectionRunEnd'
 });
 
 const saveCookies = (url, headers) => {
@@ -1280,11 +1278,6 @@ const registerNetworkIpc = (mainWindow) => {
         cancelTokenUid
       });
 
-      // Stack to track current folder hierarchy during request execution
-      // Each entry contains: { folder, folderUid, pathname }
-      // We only track folders that are NOT the root collection/folder being run
-      const folderStack = [];
-
       try {
         let folderRequests = [];
 
@@ -1314,140 +1307,6 @@ const registerNetworkIpc = (mainWindow) => {
 
         let currentRequestIndex = 0;
         let nJumps = 0; // count the number of jumps to avoid infinite loops
-
-        // Helper function to get folder pathname from request item
-        const getFolderPathnameFromRequest = (requestItem) => {
-          if (!requestItem.pathname) {
-            return null;
-          }
-          const requestDir = path.dirname(requestItem.pathname);
-          // If the directory is the collection pathname, the request is at root level
-          if (requestDir === collectionPath) {
-            return null;
-          }
-          return requestDir;
-        };
-
-        // Helper function to get folder hierarchy pathnames from a folder pathname
-        // Returns array of pathnames from collection root to the folder (excluding collection root)
-        const getFolderHierarchyFromPathname = (folderPathname) => {
-          if (!folderPathname || folderPathname === collectionPath) {
-            return [];
-          }
-
-          const hierarchy = [];
-          let currentPath = folderPathname;
-
-          // Build hierarchy by going up the directory tree until we reach collection root
-          while (currentPath
-            && currentPath !== collectionPath
-            && currentPath !== path.dirname(currentPath)) {
-            hierarchy.unshift(currentPath);
-            currentPath = path.dirname(currentPath);
-            // Safety check to avoid infinite loop
-            if (hierarchy.length > 100) {
-              break;
-            }
-          }
-
-          return hierarchy;
-        };
-
-        // Helper function to handle folder transitions
-        const handleFolderTransitions = async (requestItem) => {
-          const requestFolderPathname = getFolderPathnameFromRequest(requestItem);
-          const newFolderHierarchy = requestFolderPathname
-            ? getFolderHierarchyFromPathname(requestFolderPathname)
-            : [];
-
-          // Find common prefix between current stack and new hierarchy
-          let commonLength = 0;
-          while (
-            commonLength < folderStack.length
-            && commonLength < newFolderHierarchy.length
-            && folderStack[commonLength].pathname === newFolderHierarchy[commonLength]
-          ) {
-            commonLength++;
-          }
-
-          // End folders that are no longer in the path (from end of stack backwards)
-          for (let i = folderStack.length - 1; i >= commonLength; i--) {
-            const folderInfo = folderStack[i];
-            const folderHookManagerKey = `folder:${folderInfo.folderUid}`;
-            const folderHookManager = hookManagersMap.get(folderHookManagerKey);
-            if (folderHookManager && typeof folderHookManager.call === 'function') {
-              try {
-                folderHookManager.call(HOOK_EVENTS.FOLDER_RUN_END, {
-                  folder: folderInfo.folder,
-                  folderUid: folderInfo.folderUid,
-                  collection,
-                  collectionUid
-                });
-              } catch (error) {
-                console.error('Error calling folder run end hooks:', error);
-              }
-            }
-            folderStack.pop();
-          }
-
-          // Start new folders that are in the new path but not in current stack
-          for (let i = commonLength; i < newFolderHierarchy.length; i++) {
-            const folderPathname = newFolderHierarchy[i];
-            // Find the folder item by pathname
-            const folderItem = findItemInCollectionByPathname(collection, folderPathname);
-
-            if (folderItem && folderItem.type === 'folder') {
-              // Always create/register folder hooks (even if empty) so we can call folder run start/end events
-              const folderHookManagerKey = `folder:${folderItem.uid}`;
-              let folderHookManager = hookManagersMap.get(folderHookManagerKey);
-              if (!folderHookManager) {
-                const folderRoot = folderItem?.draft || folderItem?.root || {};
-                const folderHooks = get(folderRoot, 'request.hooks', '') || '';
-                const placeholderRequest = {};
-                const folderHookManagerOptions = {
-                  request: placeholderRequest,
-                  envVars,
-                  runtimeVariables,
-                  collectionPath,
-                  processEnvVars,
-                  scriptingConfig,
-                  runRequestByItemPathname,
-                  collectionName: collection?.name,
-                  onConsoleLog: (type, args) => {
-                    console[type](...args);
-                    mainWindow.webContents.send('main:console-log', {
-                      type,
-                      args
-                    });
-                  }
-                };
-                folderHookManager = await getOrCreateHookManager(hookManagersMap, folderHookManagerKey, folderHooks, folderHookManagerOptions);
-              }
-
-              // Call folder run start hook
-              if (folderHookManager && typeof folderHookManager.call === 'function') {
-                try {
-                  folderHookManager.call(HOOK_EVENTS.FOLDER_RUN_START, {
-                    folder: folderItem,
-                    folderUid: folderItem.uid,
-                    collection,
-                    collectionUid
-                  });
-                } catch (error) {
-                  console.error('Error calling folder run start hooks:', error);
-                }
-              }
-
-              // Add to stack
-              folderStack.push({
-                folder: folderItem,
-                folderUid: folderItem.uid,
-                pathname: folderPathname
-              });
-            }
-          }
-        };
-
         // console.log('folderRequests', folderRequests);;
         while (currentRequestIndex < folderRequests.length) {
           // user requested to cancel runner
@@ -1460,12 +1319,6 @@ const registerNetworkIpc = (mainWindow) => {
           stopRunnerExecution = false;
 
           const item = cloneDeep(folderRequests[currentRequestIndex]);
-
-          // Handle folder transitions before processing the request
-          // Skip if this is a gRPC request (we'll handle it after the skip check)
-          if (item.type !== 'grpc-request') {
-            await handleFolderTransitions(item);
-          }
           let nextRequestName;
           const itemUid = item.uid;
           const eventData = {
@@ -1967,27 +1820,7 @@ const registerNetworkIpc = (mainWindow) => {
           }
         }
 
-        // End all remaining folders in the stack (in reverse order)
-        for (let i = folderStack.length - 1; i >= 0; i--) {
-          const folderInfo = folderStack[i];
-          const folderHookManagerKey = `folder:${folderInfo.folderUid}`;
-          const folderHookManager = hookManagersMap.get(folderHookManagerKey);
-          if (folderHookManager && typeof folderHookManager.call === 'function') {
-            try {
-              folderHookManager.call(HOOK_EVENTS.FOLDER_RUN_END, {
-                folder: folderInfo.folder,
-                folderUid: folderInfo.folderUid,
-                collection,
-                collectionUid
-              });
-            } catch (error) {
-              console.error('Error calling folder run end hooks:', error);
-            }
-          }
-        }
-        folderStack.length = 0; // Clear the stack
-
-        // Call collection/folder run end hooks
+        // Call collection run end hooks
         if (isCollectionRun) {
           const collectionHookManager = hookManagersMap.get(collectionHookManagerKey);
           if (collectionHookManager) {
@@ -2008,37 +1841,11 @@ const registerNetworkIpc = (mainWindow) => {
       } catch (error) {
         console.log("error", error);
 
-        // End all remaining folders in the stack (in reverse order) even on error
-        for (let i = folderStack.length - 1; i >= 0; i--) {
-          const folderInfo = folderStack[i];
-          const folderHookManagerKey = `folder:${folderInfo.folderUid}`;
-          const folderHookManager = hookManagersMap.get(folderHookManagerKey);
-          if (folderHookManager && typeof folderHookManager.call === 'function') {
-            try {
-              folderHookManager.call(HOOK_EVENTS.FOLDER_RUN_END, {
-                folder: folderInfo.folder,
-                folderUid: folderInfo.folderUid,
-                collection,
-                collectionUid
-              });
-            } catch (hookError) {
-              console.error('Error calling folder run end hooks:', hookError);
-            }
-          }
-        }
-        folderStack.length = 0; // Clear the stack
-
-        // Call collection/folder run end hooks even on error
+        // Call collection run end hooks even on error
         if (isCollectionRun) {
           const collectionHookManager = hookManagersMap.get(collectionHookManagerKey);
           if (collectionHookManager) {
             collectionHookManager.call(HOOK_EVENTS.COLLECTION_RUN_END, { collection, collectionUid });
-          }
-        } else {
-          const folderHookManagerKey = `folder:${folder.uid}`;
-          const folderHookManager = hookManagersMap.get(folderHookManagerKey);
-          if (folderHookManager) {
-            folderHookManager.call(HOOK_EVENTS.FOLDER_RUN_END, { folder, folderUid, collection, collectionUid });
           }
         }
 
