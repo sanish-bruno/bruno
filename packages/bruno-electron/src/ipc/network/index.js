@@ -1513,6 +1513,14 @@ const registerNetworkIpc = (mainWindow) => {
         folder = collection;
       }
 
+      mainWindow.webContents.send('main:run-folder-event', {
+        type: 'testrun-started',
+        isRecursive: recursive,
+        collectionUid,
+        folderUid,
+        cancelTokenUid
+      });
+
       // Create a map to store HookManagers for this collection/folder run
       // Key format: 'collection:<collectionUid>', 'folder:<folderUid>', 'request:<requestUid>'
       const hookManagersMap = new Map();
@@ -1563,14 +1571,6 @@ const registerNetworkIpc = (mainWindow) => {
         const collectionHookManager = hookManagersMap.get(collectionHookManagerKey);
         await collectionHookManager.call(HOOK_EVENTS.RUNNER_BEFORE_COLLECTION_RUN, { collection, collectionUid });
       }
-
-      mainWindow.webContents.send('main:run-folder-event', {
-        type: 'testrun-started',
-        isRecursive: recursive,
-        collectionUid,
-        folderUid,
-        cancelTokenUid
-      });
 
       try {
         let folderRequests = [];
