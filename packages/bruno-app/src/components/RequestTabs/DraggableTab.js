@@ -1,13 +1,29 @@
 import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 
-const DraggableTab = ({ id, onMoveTab, index, children, className, onClick }) => {
+// Drag types
+export const TAB_DRAG_TYPE = 'tab';
+
+const DraggableTab = ({
+  id,
+  onMoveTab,
+  index,
+  children,
+  className,
+  onClick,
+  pinned = false
+}) => {
   const ref = React.useRef(null);
 
   const [{ handlerId, isOver }, drop] = useDrop({
-    accept: 'tab',
+    accept: TAB_DRAG_TYPE,
     hover(item, monitor) {
-      onMoveTab(item.id, id);
+      // Only trigger move if tabs are in the same zone (both pinned or both unpinned)
+      const isSameZone = item.pinned === pinned;
+
+      if (isSameZone) {
+        onMoveTab(item.id, id);
+      }
     },
     collect: (monitor) => ({
       handlerId: monitor.getHandlerId(),
@@ -16,9 +32,9 @@ const DraggableTab = ({ id, onMoveTab, index, children, className, onClick }) =>
   });
 
   const [{ isDragging }, drag] = useDrag({
-    type: 'tab',
+    type: TAB_DRAG_TYPE,
     item: () => {
-      return { id, index };
+      return { id, index, pinned };
     },
     collect: (monitor) => ({
       isDragging: monitor.isDragging()

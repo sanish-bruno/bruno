@@ -41,6 +41,7 @@ const registerPreferencesIpc = require('./ipc/preferences');
 const registerSystemMonitorIpc = require('./ipc/system-monitor');
 const registerWorkspaceIpc = require('./ipc/workspace');
 const registerApiSpecIpc = require('./ipc/apiSpec');
+const registerTabLayoutIpc = require('./ipc/tab-layout');
 const collectionWatcher = require('./app/collection-watcher');
 const WorkspaceWatcher = require('./app/workspace-watcher');
 const ApiSpecWatcher = require('./app/apiSpecsWatcher');
@@ -311,6 +312,7 @@ app.on('ready', async () => {
   registerWorkspaceIpc(mainWindow, workspaceWatcher);
   registerApiSpecIpc(mainWindow, apiSpecWatcher);
   registerNotificationsIpc(mainWindow, collectionWatcher);
+  registerTabLayoutIpc(mainWindow);
   registerFilesystemIpc(mainWindow);
   registerSystemMonitorIpc(mainWindow, systemMonitor);
 });

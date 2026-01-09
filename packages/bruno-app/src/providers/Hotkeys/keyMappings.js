@@ -32,7 +32,8 @@ const KeyMapping = {
     name: 'Move Tab Right'
   },
   closeAllTabs: { mac: 'command+shift+w', windows: 'ctrl+shift+w', name: 'Close All Tabs' },
-  collapseSidebar: { mac: 'command+\\', windows: 'ctrl+\\', name: 'Collapse Sidebar' }
+  collapseSidebar: { mac: 'command+\\', windows: 'ctrl+\\', name: 'Collapse Sidebar' },
+  pinTab: { mac: 'command+shift+p', windows: 'ctrl+shift+p', name: 'Pin/Unpin Tab' }
 };
 
 /**

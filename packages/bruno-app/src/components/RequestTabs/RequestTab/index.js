@@ -1,6 +1,12 @@
 import React, { useCallback, useState, useRef, Fragment, useMemo, useEffect } from 'react';
 import get from 'lodash/get';
-import { closeTabs, makeTabPermanent } from 'providers/ReduxStore/slices/tabs';
+import { IconPinned } from '@tabler/icons';
+import {
+  closeTabs,
+  makeTabPermanent,
+  pinTab,
+  unpinTab
+} from 'providers/ReduxStore/slices/tabs';
 import { saveRequest, saveCollectionRoot, saveFolderRoot, saveEnvironment } from 'providers/ReduxStore/slices/collections/actions';
 import { deleteRequestDraft, deleteCollectionDraft, deleteFolderDraft, clearEnvironmentsDraft } from 'providers/ReduxStore/slices/collections';
 import { clearGlobalEnvironmentDraft } from 'providers/ReduxStore/slices/global-environments';
@@ -24,7 +30,7 @@ import { closeWsConnection } from 'utils/network/index';
 import ExampleTab from '../ExampleTab';
 import toast from 'react-hot-toast';
 
-const RequestTab = ({ tab, collection, tabIndex, collectionRequestTabs, folderUid, hasOverflow, setHasOverflow, dropdownContainerRef }) => {
+const RequestTab = ({ tab, collection, tabIndex, collectionRequestTabs, folderUid, hasOverflow, setHasOverflow, dropdownContainerRef, isPinned = false }) => {
   const dispatch = useDispatch();
   const { theme } = useTheme();
   const tabNameRef = useRef(null);
@@ -106,6 +112,9 @@ const RequestTab = ({ tab, collection, tabIndex, collectionRequestTabs, folderUi
     if (e.button === 1) {
       e.preventDefault();
       e.stopPropagation();
+
+      // Don't close pinned tabs
+      if (isPinned) return;
 
       // Close the tab
       dispatch(
@@ -378,6 +387,9 @@ const RequestTab = ({ tab, collection, tabIndex, collectionRequestTabs, folderUi
         onContextMenu={handleRightClick}
         onDoubleClick={() => dispatch(makeTabPermanent({ uid: tab.uid }))}
         onMouseUp={(e) => {
+          // Don't close pinned tabs
+          if (isPinned) return;
+
           if (!hasChanges) return handleMouseUp(e);
 
           if (e.button === 1) {
@@ -387,6 +399,9 @@ const RequestTab = ({ tab, collection, tabIndex, collectionRequestTabs, folderUi
           }
         }}
       >
+        {isPinned && (
+          <IconPinned size={12} className="pin-indicator mr-1" style={{ opacity: 0.6 }} />
+        )}
         <span className="tab-method uppercase" style={{ color: getMethodColor(method) }}>
           {method}
         </span>
@@ -401,26 +416,30 @@ const RequestTab = ({ tab, collection, tabIndex, collectionRequestTabs, folderUi
           collection={collection}
           dispatch={dispatch}
           dropdownContainerRef={dropdownContainerRef}
+          tab={tab}
+          isPinned={isPinned}
         />
       </div>
-      <GradientCloseButton
-        hasChanges={hasChanges}
-        onClick={(e) => {
-          if (!hasChanges) {
-            isWS && closeWsConnection(item.uid);
-            return handleCloseClick(e);
-          }
+      {!isPinned && (
+        <GradientCloseButton
+          hasChanges={hasChanges}
+          onClick={(e) => {
+            if (!hasChanges) {
+              isWS && closeWsConnection(item.uid);
+              return handleCloseClick(e);
+            }
 
-          e.stopPropagation();
-          e.preventDefault();
-          setShowConfirmClose(true);
-        }}
-      />
+            e.stopPropagation();
+            e.preventDefault();
+            setShowConfirmClose(true);
+          }}
+        />
+      )}
     </StyledWrapper>
   );
 };
 
-function RequestTabMenu({ menuDropdownRef, tabLabelRef, collectionRequestTabs, tabIndex, collection, dispatch, dropdownContainerRef }) {
+function RequestTabMenu({ menuDropdownRef, tabLabelRef, collectionRequestTabs, tabIndex, collection, dispatch, dropdownContainerRef, tab, isPinned = false }) {
   const [showCloneRequestModal, setShowCloneRequestModal] = useState(false);
   const [showAddNewRequestModal, setShowAddNewRequestModal] = useState(false);
 
@@ -434,13 +453,25 @@ function RequestTabMenu({ menuDropdownRef, tabLabelRef, collectionRequestTabs, t
   };
 
   const totalTabs = collectionRequestTabs.length || 0;
-  const currentTabUid = collectionRequestTabs[tabIndex]?.uid;
+  // Use tab.uid directly instead of looking up by tabIndex (which may be incorrect after pinned/unpinned separation)
+  const currentTabUid = tab.uid;
   const currentTabItem = findItemInCollection(collection, currentTabUid);
   const currentTabHasChanges = useMemo(() => hasRequestChanges(currentTabItem), [currentTabItem]);
 
-  const hasLeftTabs = tabIndex !== 0;
-  const hasRightTabs = totalTabs > tabIndex + 1;
+  // Find actual index in collectionRequestTabs for left/right tab calculations
+  const actualTabIndex = collectionRequestTabs.findIndex((t) => t.uid === tab.uid);
+  const hasLeftTabs = actualTabIndex > 0;
+  const hasRightTabs = totalTabs > actualTabIndex + 1;
   const hasOtherTabs = totalTabs > 1;
+
+  // Pin/Unpin handlers
+  const handleTogglePin = () => {
+    if (isPinned) {
+      dispatch(unpinTab({ uid: currentTabUid }));
+    } else {
+      dispatch(pinTab({ uid: currentTabUid }));
+    }
+  };
 
   async function handleCloseTab(tabUid) {
     if (!tabUid) {
@@ -475,17 +506,17 @@ function RequestTabMenu({ menuDropdownRef, tabLabelRef, collectionRequestTabs, t
   }
 
   async function handleCloseOtherTabs() {
-    const otherTabs = collectionRequestTabs.filter((_, index) => index !== tabIndex);
+    const otherTabs = collectionRequestTabs.filter((_, index) => index !== actualTabIndex);
     await Promise.all(otherTabs.map((tab) => handleCloseTab(tab.uid)));
   }
 
   async function handleCloseTabsToTheLeft() {
-    const leftTabs = collectionRequestTabs.filter((_, index) => index < tabIndex);
+    const leftTabs = collectionRequestTabs.filter((_, index) => index < actualTabIndex);
     await Promise.all(leftTabs.map((tab) => handleCloseTab(tab.uid)));
   }
 
   async function handleCloseTabsToTheRight() {
-    const rightTabs = collectionRequestTabs.filter((_, index) => index > tabIndex);
+    const rightTabs = collectionRequestTabs.filter((_, index) => index > actualTabIndex);
     await Promise.all(rightTabs.map((tab) => handleCloseTab(tab.uid)));
   }
 
@@ -500,57 +531,69 @@ function RequestTabMenu({ menuDropdownRef, tabLabelRef, collectionRequestTabs, t
     await Promise.all(collectionRequestTabs.map((tab) => handleCloseTab(tab.uid)));
   }
 
-  const menuItems = useMemo(() => [
-    {
-      id: 'new-request',
-      label: 'New Request',
-      onClick: () => setShowAddNewRequestModal(true)
-    },
-    {
-      id: 'clone-request',
-      label: 'Clone Request',
-      onClick: () => setShowCloneRequestModal(true)
-    },
-    {
-      id: 'revert-changes',
-      label: 'Revert Changes',
-      onClick: handleRevertChanges,
-      disabled: !currentTabItem?.draft
-    },
-    {
-      id: 'close',
-      label: 'Close',
-      onClick: () => handleCloseTab(currentTabUid)
-    },
-    {
-      id: 'close-others',
-      label: 'Close Others',
-      onClick: handleCloseOtherTabs,
-      disabled: !hasOtherTabs
-    },
-    {
-      id: 'close-left',
-      label: 'Close to the Left',
-      onClick: handleCloseTabsToTheLeft,
-      disabled: !hasLeftTabs
-    },
-    {
-      id: 'close-right',
-      label: 'Close to the Right',
-      onClick: handleCloseTabsToTheRight,
-      disabled: !hasRightTabs
-    },
-    {
-      id: 'close-saved',
-      label: 'Close Saved',
-      onClick: handleCloseSavedTabs
-    },
-    {
-      id: 'close-all',
-      label: 'Close All',
-      onClick: handleCloseAllTabs
-    }
-  ], [currentTabUid, currentTabItem, hasOtherTabs, hasLeftTabs, hasRightTabs, collection, collectionRequestTabs, tabIndex, dispatch]);
+  const menuItems = useMemo(() => {
+    const items = [
+      {
+        id: 'new-request',
+        label: 'New Request',
+        onClick: () => setShowAddNewRequestModal(true)
+      },
+      {
+        id: 'clone-request',
+        label: 'Clone Request',
+        onClick: () => setShowCloneRequestModal(true)
+      },
+      { id: 'divider-1', type: 'divider' },
+      {
+        id: 'pin-tab',
+        label: isPinned ? 'Unpin Tab' : 'Pin Tab',
+        onClick: handleTogglePin
+      },
+      { id: 'divider-2', type: 'divider' },
+      {
+        id: 'revert-changes',
+        label: 'Revert Changes',
+        onClick: handleRevertChanges,
+        disabled: !currentTabItem?.draft
+      },
+      {
+        id: 'close',
+        label: 'Close',
+        onClick: () => handleCloseTab(currentTabUid),
+        disabled: isPinned
+      },
+      {
+        id: 'close-others',
+        label: 'Close Others',
+        onClick: handleCloseOtherTabs,
+        disabled: !hasOtherTabs
+      },
+      {
+        id: 'close-left',
+        label: 'Close to the Left',
+        onClick: handleCloseTabsToTheLeft,
+        disabled: !hasLeftTabs
+      },
+      {
+        id: 'close-right',
+        label: 'Close to the Right',
+        onClick: handleCloseTabsToTheRight,
+        disabled: !hasRightTabs
+      },
+      {
+        id: 'close-saved',
+        label: 'Close Saved',
+        onClick: handleCloseSavedTabs
+      },
+      {
+        id: 'close-all',
+        label: 'Close All',
+        onClick: handleCloseAllTabs
+      }
+    ];
+
+    return items;
+  }, [currentTabUid, currentTabItem, hasOtherTabs, hasLeftTabs, hasRightTabs, collection, collectionRequestTabs, actualTabIndex, dispatch, isPinned]);
 
   const menuDropdown = (
     <MenuDropdown

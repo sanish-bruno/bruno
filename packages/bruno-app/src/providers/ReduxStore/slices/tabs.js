@@ -7,7 +7,8 @@ import last from 'lodash/last';
 
 const initialState = {
   tabs: [],
-  activeTabUid: null
+  activeTabUid: null,
+  pinnedTabOrder: [] // Array of tab uids in pinned order
 };
 
 const tabTypeAlreadyExists = (tabs, collectionUid, type) => {
@@ -64,6 +65,7 @@ export const tabsSlice = createSlice({
           preview: preview !== undefined
             ? preview
             : !nonReplaceableTabTypes.includes(type),
+          pinned: false,
           ...(uid ? { folderUid: uid } : {}),
           ...(exampleUid ? { exampleUid } : {}),
           ...(itemUid ? { itemUid } : {})
@@ -83,6 +85,7 @@ export const tabsSlice = createSlice({
         responseFormat: null,
         responseViewTab: null,
         type: type || 'request',
+        pinned: false,
         ...(uid ? { folderUid: uid } : {}),
         preview: preview !== undefined
           ? preview
@@ -168,6 +171,9 @@ export const tabsSlice = createSlice({
       const activeTab = find(state.tabs, (t) => t.uid === state.activeTabUid);
       const tabUids = action.payload.tabUids || [];
 
+      // Remove closed tabs from pinned order
+      state.pinnedTabOrder = filter(state.pinnedTabOrder, (id) => !tabUids.includes(id));
+
       // remove the tabs from the state
       state.tabs = filter(state.tabs, (t) => !tabUids.includes(t.uid));
 
@@ -197,6 +203,12 @@ export const tabsSlice = createSlice({
     },
     closeAllCollectionTabs: (state, action) => {
       const collectionUid = action.payload.collectionUid;
+      // Get uids of tabs being closed
+      const closingTabUids = state.tabs
+        .filter((t) => t.collectionUid === collectionUid)
+        .map((t) => t.uid);
+      // Remove from pinned order
+      state.pinnedTabOrder = filter(state.pinnedTabOrder, (id) => !closingTabUids.includes(id));
       state.tabs = filter(state.tabs, (t) => t.collectionUid !== collectionUid);
       state.activeTabUid = null;
     },
@@ -235,6 +247,77 @@ export const tabsSlice = createSlice({
       tabs.splice(targetIdx, 0, moved);
 
       state.tabs = tabs;
+    },
+
+    // Pin/Unpin tab actions
+    pinTab: (state, action) => {
+      const { uid } = action.payload;
+      const tab = find(state.tabs, (t) => t.uid === uid);
+      if (tab && !tab.pinned) {
+        tab.pinned = true;
+        // Add to end of pinned order
+        if (!state.pinnedTabOrder.includes(uid)) {
+          state.pinnedTabOrder.push(uid);
+        }
+      }
+    },
+
+    unpinTab: (state, action) => {
+      const { uid } = action.payload;
+      const tab = find(state.tabs, (t) => t.uid === uid);
+      if (tab && tab.pinned) {
+        tab.pinned = false;
+        // Remove from pinned order
+        state.pinnedTabOrder = filter(state.pinnedTabOrder, (id) => id !== uid);
+      }
+    },
+
+    togglePinTab: (state, action) => {
+      const { uid } = action.payload;
+      const tab = find(state.tabs, (t) => t.uid === uid);
+      if (tab) {
+        if (tab.pinned) {
+          tab.pinned = false;
+          state.pinnedTabOrder = filter(state.pinnedTabOrder, (id) => id !== uid);
+        } else {
+          tab.pinned = true;
+          if (!state.pinnedTabOrder.includes(uid)) {
+            state.pinnedTabOrder.push(uid);
+          }
+        }
+      }
+    },
+
+    reorderPinnedTabs: (state, action) => {
+      const { sourceUid, targetUid } = action.payload;
+      const sourceIdx = state.pinnedTabOrder.indexOf(sourceUid);
+      const targetIdx = state.pinnedTabOrder.indexOf(targetUid);
+
+      if (sourceIdx < 0 || targetIdx < 0 || sourceIdx === targetIdx) {
+        return;
+      }
+
+      const [moved] = state.pinnedTabOrder.splice(sourceIdx, 1);
+      state.pinnedTabOrder.splice(targetIdx, 0, moved);
+    },
+
+    // Bulk update for restoring persisted state
+    restoreTabLayout: (state, action) => {
+      const { pinnedTabOrder, tabStates } = action.payload;
+
+      if (pinnedTabOrder) {
+        state.pinnedTabOrder = pinnedTabOrder;
+      }
+
+      if (tabStates) {
+        // Update pinned state for existing tabs
+        tabStates.forEach(({ uid, pinned }) => {
+          const tab = find(state.tabs, (t) => t.uid === uid);
+          if (tab) {
+            if (pinned !== undefined) tab.pinned = pinned;
+          }
+        });
+      }
     }
   }
 });
@@ -253,7 +336,12 @@ export const {
   closeTabs,
   closeAllCollectionTabs,
   makeTabPermanent,
-  reorderTabs
+  reorderTabs,
+  pinTab,
+  unpinTab,
+  togglePinTab,
+  reorderPinnedTabs,
+  restoreTabLayout
 } = tabsSlice.actions;
 
 export default tabsSlice.reducer;

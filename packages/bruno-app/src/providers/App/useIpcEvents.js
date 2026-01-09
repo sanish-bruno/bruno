@@ -22,6 +22,7 @@ import {
   streamDataReceived
 } from 'providers/ReduxStore/slices/collections';
 import { collectionAddEnvFileEvent, openCollectionEvent, hydrateCollectionWithUiStateSnapshot, mergeAndPersistEnvironment } from 'providers/ReduxStore/slices/collections/actions';
+import { restoreTabLayoutFromPersistence } from 'providers/ReduxStore/slices/tabs/actions';
 import { workspaceOpenedEvent, workspaceConfigUpdatedEvent } from 'providers/ReduxStore/slices/workspaces/actions';
 import toast from 'react-hot-toast';
 import { useDispatch } from 'react-redux';
@@ -112,7 +113,10 @@ const useIpcEvents = () => {
     const removeApiSpecTreeUpdateListener = ipcRenderer.on('main:apispec-tree-updated', _apiSpecTreeUpdated);
 
     const removeOpenCollectionListener = ipcRenderer.on('main:collection-opened', (pathname, uid, brunoConfig) => {
-      dispatch(openCollectionEvent(uid, pathname, brunoConfig));
+      dispatch(openCollectionEvent(uid, pathname, brunoConfig)).then(() => {
+        // Restore tab layout (pinned tabs, groups) for this collection
+        dispatch(restoreTabLayoutFromPersistence(pathname, uid));
+      });
     });
 
     const removeOpenWorkspaceListener = ipcRenderer.on('main:workspace-opened', (workspacePath, workspaceUid, workspaceConfig) => {

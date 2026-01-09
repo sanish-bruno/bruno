@@ -199,6 +199,14 @@ const Wrapper = styled.div`
   .special-tab-icon {
     color: ${(props) => props.theme.primary.text};
   }
+
+  /* Pinned tab indicator */
+  li.pinned-tab {
+    .pin-indicator {
+      color: ${(props) => props.theme.textSecondary};
+      flex-shrink: 0;
+    }
+  }
 `;
 
 export default Wrapper;

@@ -14,7 +14,7 @@ import {
   saveCollectionSettings
 } from 'providers/ReduxStore/slices/collections/actions';
 import { findCollectionByUid, findItemInCollection } from 'utils/collections';
-import { addTab, closeTabs, reorderTabs, switchTab } from 'providers/ReduxStore/slices/tabs';
+import { addTab, closeTabs, reorderTabs, switchTab, togglePinTab } from 'providers/ReduxStore/slices/tabs';
 import { toggleSidebarCollapse } from 'providers/ReduxStore/slices/app';
 import { getKeyBindingsForActionAllOS } from './keyMappings';
 
@@ -279,6 +279,20 @@ export const HotkeysProvider = (props) => {
       Mousetrap.unbind([...getKeyBindingsForActionAllOS('moveTabRight')]);
     };
   }, [dispatch]);
+
+  // Pin/Unpin tab (ctrl/cmd + shift + p)
+  useEffect(() => {
+    Mousetrap.bind([...getKeyBindingsForActionAllOS('pinTab')], (e) => {
+      if (activeTabUid) {
+        dispatch(togglePinTab({ uid: activeTabUid }));
+      }
+      return false; // this stops the event bubbling
+    });
+
+    return () => {
+      Mousetrap.unbind([...getKeyBindingsForActionAllOS('pinTab')]);
+    };
+  }, [activeTabUid, dispatch]);
 
   const currentCollection = getCurrentCollection();
 

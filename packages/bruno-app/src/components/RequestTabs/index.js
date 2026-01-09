@@ -1,16 +1,19 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import find from 'lodash/find';
 import filter from 'lodash/filter';
 import classnames from 'classnames';
 import { IconChevronRight, IconChevronLeft } from '@tabler/icons';
 import { useSelector, useDispatch } from 'react-redux';
-import { focusTab, reorderTabs } from 'providers/ReduxStore/slices/tabs';
+import {
+  focusTab,
+  reorderTabs,
+  reorderPinnedTabs
+} from 'providers/ReduxStore/slices/tabs';
 import NewRequest from 'components/Sidebar/NewRequest';
 import CollectionToolBar from './CollectionToolBar';
 import RequestTab from './RequestTab';
 import StyledWrapper from './StyledWrapper';
 import DraggableTab from './DraggableTab';
-import CreateUntitledRequest from 'components/CreateUntitledRequest';
 import { IconPlus } from '@tabler/icons';
 import ActionIcon from 'ui/ActionIcon/index';
 
@@ -23,6 +26,7 @@ const RequestTabs = () => {
   const [tabOverflowStates, setTabOverflowStates] = useState({});
   const [showChevrons, setShowChevrons] = useState(false);
   const tabs = useSelector((state) => state.tabs.tabs);
+  const pinnedTabOrder = useSelector((state) => state.tabs.pinnedTabOrder);
   const activeTabUid = useSelector((state) => state.tabs.activeTabUid);
   const collections = useSelector((state) => state.collections.collections);
   const leftSidebarWidth = useSelector((state) => state.app.leftSidebarWidth);
@@ -47,6 +51,34 @@ const RequestTabs = () => {
   const activeCollection = find(collections, (c) => c.uid === activeTab?.collectionUid);
   const collectionRequestTabs = filter(tabs, (t) => t.collectionUid === activeTab?.collectionUid);
 
+  // Separate pinned and unpinned tabs
+  const { pinnedTabs, unpinnedTabs } = useMemo(() => {
+    const pinned = [];
+    const unpinned = [];
+
+    // Sort pinned tabs by their order in pinnedTabOrder
+    const collectionPinnedOrder = pinnedTabOrder.filter((uid) =>
+      collectionRequestTabs.some((t) => t.uid === uid)
+    );
+
+    collectionRequestTabs.forEach((tab) => {
+      if (tab.pinned) {
+        pinned.push(tab);
+      } else {
+        unpinned.push(tab);
+      }
+    });
+
+    // Sort pinned tabs according to pinnedTabOrder
+    pinned.sort((a, b) => {
+      const aIdx = collectionPinnedOrder.indexOf(a.uid);
+      const bIdx = collectionPinnedOrder.indexOf(b.uid);
+      return aIdx - bIdx;
+    });
+
+    return { pinnedTabs: pinned, unpinnedTabs: unpinned };
+  }, [collectionRequestTabs, pinnedTabOrder]);
+
   useEffect(() => {
     if (!activeTabUid || !activeTab) return;
 
@@ -66,11 +98,12 @@ const RequestTabs = () => {
     return () => resizeObserver.disconnect();
   }, [activeTabUid, activeTab, collectionRequestTabs.length, screenWidth, leftSidebarWidth, sidebarCollapsed]);
 
-  const getTabClassname = (tab, index) => {
+  const getTabClassname = (tab, index, isPinned = false) => {
     return classnames('request-tab select-none', {
       'active': tab.uid === activeTabUid,
       'last-tab': tabs && tabs.length && index === tabs.length - 1,
-      'has-overflow': tabOverflowStates[tab.uid]
+      'has-overflow': tabOverflowStates[tab.uid],
+      'pinned-tab': isPinned
     });
   };
 
@@ -80,6 +113,14 @@ const RequestTabs = () => {
         uid: tab.uid
       })
     );
+  };
+
+  const handleMoveTab = (sourceUid, targetUid) => {
+    dispatch(reorderTabs({ sourceUid, targetUid }));
+  };
+
+  const handleMovePinnedTab = (sourceUid, targetUid) => {
+    dispatch(reorderPinnedTabs({ sourceUid, targetUid }));
   };
 
   if (!activeTabUid) {
@@ -108,6 +149,32 @@ const RequestTabs = () => {
       'has-chevrons': showChevrons
     });
   };
+
+  // Render a single tab
+  const renderTab = (tab, index, isPinned = false) => (
+    <DraggableTab
+      key={tab.uid}
+      id={tab.uid}
+      index={index}
+      pinned={isPinned}
+      onMoveTab={isPinned ? handleMovePinnedTab : handleMoveTab}
+      className={getTabClassname(tab, index, isPinned)}
+      onClick={() => handleClick(tab)}
+    >
+      <RequestTab
+        collectionRequestTabs={collectionRequestTabs}
+        tabIndex={index}
+        tab={tab}
+        collection={activeCollection}
+        folderUid={tab.folderUid}
+        hasOverflow={tabOverflowStates[tab.uid]}
+        setHasOverflow={createSetHasOverflow(tab.uid)}
+        dropdownContainerRef={collectionTabsRef}
+        isPinned={isPinned}
+      />
+    </DraggableTab>
+  );
+
   // Todo: Must support ephemeral requests
   return (
     <StyledWrapper className={getRootClassname()}>
@@ -124,45 +191,14 @@ const RequestTabs = () => {
                 <IconChevronLeft size={18} strokeWidth={1.5} />
               </ActionIcon>
             ) : null}
-            {/* Moved to post mvp */}
-            {/* <li className="select-none new-tab mr-1" onClick={createNewTab}>
-              <div className="flex items-center home-icon-container">
-                <IconHome2 size={18} strokeWidth={1.5}/>
-              </div>
-            </li> */}
+
             <div className="tabs-scroll-container" style={{ maxWidth: maxTablistWidth }} ref={scrollContainerRef}>
               <ul role="tablist" ref={tabsRef}>
-                {collectionRequestTabs && collectionRequestTabs.length
-                  ? collectionRequestTabs.map((tab, index) => {
-                      return (
-                        <DraggableTab
-                          key={tab.uid}
-                          id={tab.uid}
-                          index={index}
-                          onMoveTab={(source, target) => {
-                            dispatch(reorderTabs({
-                              sourceUid: source,
-                              targetUid: target
-                            }));
-                          }}
-                          className={getTabClassname(tab, index)}
-                          onClick={() => handleClick(tab)}
-                        >
-                          <RequestTab
-                            collectionRequestTabs={collectionRequestTabs}
-                            tabIndex={index}
-                            key={tab.uid}
-                            tab={tab}
-                            collection={activeCollection}
-                            folderUid={tab.folderUid}
-                            hasOverflow={tabOverflowStates[tab.uid]}
-                            setHasOverflow={createSetHasOverflow(tab.uid)}
-                            dropdownContainerRef={collectionTabsRef}
-                          />
-                        </DraggableTab>
-                      );
-                    })
-                  : null}
+                {/* Pinned tabs */}
+                {pinnedTabs.map((tab, index) => renderTab(tab, index, true))}
+
+                {/* Unpinned tabs */}
+                {unpinnedTabs.map((tab, index) => renderTab(tab, index, false))}
               </ul>
             </div>
 
@@ -180,14 +216,6 @@ const RequestTabs = () => {
                 <IconChevronRight size={18} strokeWidth={1.5} />
               </ActionIcon>
             ) : null}
-            {/* Moved to post mvp */}
-            {/* <li className="select-none new-tab choose-request">
-                <div className="flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
-                  </svg>
-                </div>
-              </li> */}
           </div>
         </>
       ) : null}
