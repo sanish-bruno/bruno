@@ -884,6 +884,5 @@ module.exports = {
   sortByNameThenSequence,
   resolveInheritedSettings,
   extractHooks,
-  HOOK_EVENTS,
-  getOrCreateHookManager
+  HOOK_EVENTS
 };
