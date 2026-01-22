@@ -9,9 +9,6 @@ const { ipcMain } = require('electron');
 const { each, get, extend, cloneDeep, merge } = require('lodash');
 const { NtlmClient } = require('axios-ntlm');
 const { VarsRuntime, AssertRuntime, ScriptRuntime, TestRuntime, HooksRuntime, HooksExecutor } = require('@usebruno/js');
-// BrunoRequest and BrunoResponse are not exported from main index, require directly
-const BrunoRequest = require('@usebruno/js/src/bruno-request');
-const BrunoResponse = require('@usebruno/js/src/bruno-response');
 const { encodeUrl } = require('@usebruno/common').utils;
 const { extractPromptVariables } = require('@usebruno/common').utils;
 const { interpolateString } = require('./interpolate-string');
@@ -835,7 +832,8 @@ const registerNetworkIpc = (mainWindow) => {
 
       // Call beforeRequest hooks before running pre-request scripts
       // Hooks are called in registration order: collection -> folder(s) -> request
-      const beforeRequestEventData = { request, req: new BrunoRequest(request), collection, collectionUid };
+      // Note: BrunoRequest is now created inside HooksRuntime for consistency with ScriptRuntime
+      const beforeRequestEventData = { request, collection, collectionUid };
       const hookOptions = {
         request,
         envVars,
@@ -1034,14 +1032,8 @@ const registerNetworkIpc = (mainWindow) => {
 
       // Call afterResponse hooks after response is received but before post-response scripts
       // Hooks are called in registration order: collection -> folder(s) -> request
-      const afterResponseEventData = {
-        request,
-        response,
-        req: new BrunoRequest(request),
-        res: new BrunoResponse(response),
-        collection,
-        collectionUid
-      };
+      // Note: BrunoRequest and BrunoResponse are now created inside HooksRuntime for consistency with ScriptRuntime
+      const afterResponseEventData = { request, response, collection, collectionUid };
 
       // Call afterResponse hooks using consolidated approach when multiple levels have hooks
       await executeAllHooksConsolidated(
@@ -1594,7 +1586,8 @@ const registerNetworkIpc = (mainWindow) => {
 
           try {
             // Call beforeRequest hooks using consolidated approach when multiple levels have hooks
-            const beforeRequestEventData = { request, req: new BrunoRequest(request), collection, collectionUid };
+            // Note: BrunoRequest is now created inside HooksRuntime for consistency with ScriptRuntime
+            const beforeRequestEventData = { request, collection, collectionUid };
 
             const beforeRequestHooksResult = await executeAllHooksConsolidated(
               { collectionHooks, folderHooks, requestHooks },
@@ -1855,14 +1848,8 @@ const registerNetworkIpc = (mainWindow) => {
             }
 
             // Call afterResponse hooks using consolidated approach when multiple levels have hooks
-            const afterResponseEventData = {
-              request,
-              response,
-              req: new BrunoRequest(request),
-              res: new BrunoResponse(response),
-              collection,
-              collectionUid
-            };
+            // Note: BrunoRequest and BrunoResponse are now created inside HooksRuntime for consistency with ScriptRuntime
+            const afterResponseEventData = { request, response, collection, collectionUid };
 
             const afterResponseHooksResult = await executeAllHooksConsolidated(
               { collectionHooks, folderHooks, requestHooks },
