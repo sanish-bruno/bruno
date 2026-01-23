@@ -6,8 +6,6 @@ const os = require('os');
 const { preferencesUtil } = require('../store/preferences');
 const path = require('path');
 const { DEFAULT_COLLECTION_FORMAT } = require('@usebruno/filestore');
-const { HooksRuntime, HookManager } = require('@usebruno/js');
-const decomment = require('decomment');
 
 const mergeHeaders = (collection, request, requestTreePath) => {
   let headers = new Map();

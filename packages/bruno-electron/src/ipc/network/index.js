@@ -1432,6 +1432,16 @@ const registerNetworkIpc = (mainWindow) => {
               result.hookManager.dispose();
             }
           }
+
+          // Send UI updates after collection-level hooks execution
+          if (result) {
+            await sendScriptEnvironmentUpdates({
+              scriptResult: result,
+              collection,
+              collectionUid,
+              updateCookies: true
+            });
+          }
         } catch (error) {
           console.error(`Error executing collection-level hooks for ${hookEvent}:`, error);
         }
