@@ -336,31 +336,32 @@ const runSingleRequest = async function (
     const requestScriptFile = get(request, 'script.req');
     if (requestScriptFile?.length) {
       const scriptRuntime = new ScriptRuntime({ runtime: scriptingConfig?.runtime });
-      const result = await scriptRuntime.runRequestScript(
-        decomment(requestScriptFile),
-        request,
-        envVariables,
-        runtimeVariables,
-        collectionPath,
-        onConsoleLog,
-        processEnvVars,
-        scriptingConfig,
-        runSingleRequestByPathname,
-        collectionName
-      );
-      applyRunnerControlFromResult(result, runnerState);
-      nextRequestName = runnerState.nextRequestName;
-      shouldStopRunnerExecution = runnerState.shouldStopRunnerExecution;
-
-      if (result?.skipRequest) {
-        return createSkippedResponse({
-          filename: relativeItemPathname,
+      try {
+        const result = await scriptRuntime.runRequestScript(
+          decomment(requestScriptFile),
           request,
-          statusText: 'request skipped via pre-request script',
-          preRequestTestResults: result?.results || [],
-          shouldStopRunnerExecution
-        });
-      }
+          envVariables,
+          runtimeVariables,
+          collectionPath,
+          onConsoleLog,
+          processEnvVars,
+          scriptingConfig,
+          runSingleRequestByPathname,
+          collectionName
+        );
+        applyRunnerControlFromResult(result, runnerState);
+        nextRequestName = runnerState.nextRequestName;
+        shouldStopRunnerExecution = runnerState.shouldStopRunnerExecution;
+
+        if (result?.skipRequest) {
+          return createSkippedResponse({
+            filename: relativeItemPathname,
+            request,
+            statusText: 'request skipped via pre-request script',
+            preRequestTestResults: result?.results || [],
+            shouldStopRunnerExecution
+          });
+        }
 
         preRequestTestResults = result?.results || [];
       } catch (error) {
