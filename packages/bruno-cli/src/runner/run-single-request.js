@@ -163,8 +163,7 @@ const runSingleRequest = async function (
   runtime,
   collection,
   runSingleRequestByPathname,
-  globalEnvVars = {},
-  hookManagersMap
+  globalEnvVars = {}
 ) {
   const { pathname: itemPathname } = item;
   const relativeItemPathname = path.relative(collectionPath, itemPathname);
