@@ -24,6 +24,7 @@ import mime from 'mime-types';
 import path from 'utils/common/path';
 import { getUniqueTagsFromItems } from 'utils/collections/index';
 import * as exampleReducers from './exampleReducers';
+import * as hooksReducers from './hooksReducers';
 
 // gRPC status code meanings
 const grpcStatusCodes = {
@@ -155,6 +156,7 @@ export const collectionsSlice = createSlice({
   name: 'collections',
   initialState,
   reducers: {
+    ...hooksReducers,
     createCollection: (state, action) => {
       const collectionUids = map(state.collections, (c) => c.uid);
       const collection = action.payload;
@@ -1807,20 +1809,6 @@ export const collectionsSlice = createSlice({
         }
       }
     },
-    updateRequestHooksScript: (state, action) => {
-      const collection = findCollectionByUid(state.collections, action.payload.collectionUid);
-
-      if (collection) {
-        const item = findItemInCollection(collection, action.payload.itemUid);
-
-        if (item && isItemARequest(item)) {
-          if (!item.draft) {
-            item.draft = cloneDeep(item);
-          }
-          set(item.draft, 'request.script.hooks', action.payload.hooks);
-        }
-      }
-    },
     updateRequestMethod: (state, action) => {
       const collection = findCollectionByUid(state.collections, action.payload.collectionUid);
 
@@ -2183,18 +2171,6 @@ export const collectionsSlice = createSlice({
         set(collection, 'draft.root.request.tests', action.payload.tests);
       }
     },
-    updateCollectionHooksScript: (state, action) => {
-      const collection = findCollectionByUid(state.collections, action.payload.collectionUid);
-
-      if (collection) {
-        if (!collection.draft) {
-          collection.draft = {
-            root: cloneDeep(collection.root)
-          };
-        }
-        set(collection, 'draft.root.request.script.hooks', action.payload.hooks);
-      }
-    },
     updateCollectionDocs: (state, action) => {
       const collection = findCollectionByUid(state.collections, action.payload.collectionUid);
 
@@ -2449,16 +2425,6 @@ export const collectionsSlice = createSlice({
           folder.draft = cloneDeep(folder.root);
         }
         set(folder, 'draft.request.tests', action.payload.tests);
-      }
-    },
-    updateFolderHooksScript: (state, action) => {
-      const collection = findCollectionByUid(state.collections, action.payload.collectionUid);
-      const folder = collection ? findItemInCollection(collection, action.payload.folderUid) : null;
-      if (folder) {
-        if (!folder.draft) {
-          folder.draft = cloneDeep(folder.root);
-        }
-        set(folder, 'draft.request.script.hooks', action.payload.hooks);
       }
     },
     updateFolderAuth: (state, action) => {

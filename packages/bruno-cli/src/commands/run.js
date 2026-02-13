@@ -20,10 +20,10 @@ const { hasExecutableTestInScript } = require('../utils/request');
 const { createSkippedFileResults } = require('../utils/run');
 const { getSystemProxy } = require('@usebruno/requests');
 const { HooksRuntime, HookManager } = require('@usebruno/js');
-const HOOK_EVENTS = HookManager.EVENTS;
 const decomment = require('decomment');
 const command = 'run [paths...]';
 const desc = 'Run one or more requests/folders';
+const HOOK_EVENTS = HookManager.EVENTS;
 
 const formatTestSummary = (label, maxLength, passed, failed, total, errorCount = 0, skippedCount = 0) => {
   const parts = [
