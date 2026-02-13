@@ -79,7 +79,8 @@ class HooksRuntime {
     const promptVariables = request?.promptVariables || {};
 
     // Pass activeHookManager to Bru so it uses the same instance (whether provided or newly created)
-    const bru = new Bru(this.runtime, envVariables, runtimeVariables, processEnvVars, collectionPath, collectionVariables, folderVariables, requestVariables, globalEnvironmentVariables, oauth2CredentialVariables, collectionName, promptVariables, activeHookManager);
+    const certsAndProxyConfig = request?.certsAndProxyConfig || null;
+    const bru = new Bru(this.runtime, envVariables, runtimeVariables, processEnvVars, collectionPath, collectionVariables, folderVariables, requestVariables, globalEnvironmentVariables, oauth2CredentialVariables, collectionName, promptVariables, certsAndProxyConfig, activeHookManager);
 
     // Create BrunoRequest and BrunoResponse wrappers (similar to ScriptRuntime)
     const req = request ? new BrunoRequest(request) : null;
