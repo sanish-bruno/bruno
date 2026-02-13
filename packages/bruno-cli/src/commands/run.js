@@ -649,8 +649,7 @@ const handler = async function (argv) {
             runtime,
             collection,
             runSingleRequestByPathname,
-            globalEnvVars,
-            hookManagersMap
+            globalEnvVars
           );
           resolve(res?.response);
         }
@@ -712,8 +711,7 @@ const handler = async function (argv) {
         runtime,
         collection,
         runSingleRequestByPathname,
-        globalEnvVars,
-        hookManagersMap
+        globalEnvVars
       );
 
       const isLastRun = currentRequestIndex === requestItems.length - 1;
