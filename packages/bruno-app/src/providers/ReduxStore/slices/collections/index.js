@@ -2192,7 +2192,7 @@ export const collectionsSlice = createSlice({
             root: cloneDeep(collection.root)
           };
         }
-        set(collection.draft, 'root.request.script.hooks', action.payload.hooks);
+        set(collection, 'draft.root.request.script.hooks', action.payload.hooks);
       }
     },
     updateCollectionDocs: (state, action) => {
@@ -2458,7 +2458,7 @@ export const collectionsSlice = createSlice({
         if (!folder.draft) {
           folder.draft = cloneDeep(folder.root);
         }
-        set(folder.draft, 'request.script.hooks', action.payload.hooks);
+        set(folder, 'draft.request.script.hooks', action.payload.hooks);
       }
     },
     updateFolderAuth: (state, action) => {
