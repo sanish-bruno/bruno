@@ -87,7 +87,7 @@ const HttpRequestPane = ({ item, collection }) => {
   );
 
   const indicators = useMemo(() => {
-    const hasScriptError = item.preRequestScriptErrorMessage || item.postResponseScriptErrorMessage || item.hooksScriptErrorMessage;
+    const hasScriptError = item.preRequestScriptErrorMessage || item.postResponseScriptErrorMessage || item.hookScriptErrorMessage;
     const hasTestError = item.testScriptErrorMessage;
 
     return {

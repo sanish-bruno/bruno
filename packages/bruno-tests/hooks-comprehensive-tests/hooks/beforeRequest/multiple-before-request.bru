@@ -47,8 +47,9 @@ tests {
   });
   
   test("request should have headers from all hooks", function() {
-    // Verify hooks executed sequentially
     expect(res.getStatus()).to.equal(200);
+    const hookOrder = bru.getVar('hook-order');
+    expect(hookOrder).to.equal('1,2,3');
   });
 }
 

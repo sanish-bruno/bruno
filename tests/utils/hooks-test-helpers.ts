@@ -48,10 +48,20 @@ export const generateMockHooksScript = (options: {
 
   const lines: string[] = [];
 
+  const hookTypeMap: Record<string, string> = {
+    BEFORE_REQUEST: 'bru.hooks.http.onBeforeRequest',
+    AFTER_RESPONSE: 'bru.hooks.http.onAfterResponse',
+    BEFORE_COLLECTION_RUN: 'bru.hooks.runner.onBeforeCollectionRun',
+    AFTER_COLLECTION_RUN: 'bru.hooks.runner.onAfterCollectionRun'
+  };
+
   for (const event of events) {
     const eventName = HOOK_EVENTS[event];
-    const handlerName = event === 'BEFORE_REQUEST' ? 'onBeforeRequest' : 'onAfterResponse';
-    const hookType = event === 'BEFORE_REQUEST' ? 'bru.hooks.http.onBeforeRequest' : 'bru.hooks.http.onAfterResponse';
+    const hookType = hookTypeMap[event];
+
+    if (!hookType) {
+      throw new Error(`Unknown hook event: ${event}`);
+    }
 
     lines.push(`${hookType}(async ({ req, res, request, response }) => {`);
 
@@ -72,22 +82,6 @@ export const generateMockHooksScript = (options: {
   }
 
   return lines.join('\n');
-};
-
-/**
- * Validates that hooks executed in the correct order
- * Checks console log output for hook execution markers
- * @param page - The Playwright page object
- * @param expectedOrder - Expected hook execution order
- */
-export const validateHookExecutionOrder = async (
-  page: Page,
-  expectedOrder: string[]
-) => {
-  // This would need to check console output or test results
-  // For now, this is a placeholder for the actual implementation
-  // that would depend on how the UI exposes hook execution logs
-  console.log('Validating hook execution order:', expectedOrder);
 };
 
 /**
@@ -132,20 +126,6 @@ export const createHooksTest = (options: HooksTestOptions) => {
 };
 
 /**
- * Verifies hook-related variables were set correctly
- * @param page - The Playwright page object
- * @param expectedVariables - Map of variable names to expected values
- */
-export const verifyHookVariables = async (
-  page: Page,
-  expectedVariables: Record<string, unknown>
-) => {
-  // This would need to check the variables panel or use the debug console
-  // Placeholder for actual implementation
-  console.log('Verifying hook variables:', expectedVariables);
-};
-
-/**
  * Performance helper to measure hook execution time
  */
 export const measureHookPerformance = async (
@@ -159,32 +139,6 @@ export const measureHookPerformance = async (
   return {
     duration: endTime - startTime,
     durationMs: Math.round(endTime - startTime)
-  };
-};
-
-/**
- * Compares performance of consolidated vs individual hook execution
- * @param page - The Playwright page object
- * @param collectionName - Collection to test
- * @param iterations - Number of test iterations
- */
-export const compareConsolidatedVsIndividual = async (
-  page: Page,
-  collectionName: string,
-  iterations: number = 3
-) => {
-  const results = {
-    consolidated: [] as number[],
-    individual: [] as number[]
-  };
-
-  // This would need separate collections configured for each mode
-  // Placeholder for actual implementation
-
-  return {
-    consolidatedAvg: results.consolidated.reduce((a, b) => a + b, 0) / results.consolidated.length,
-    individualAvg: results.individual.reduce((a, b) => a + b, 0) / results.individual.length,
-    improvement: 0 // Percentage improvement
   };
 };
 

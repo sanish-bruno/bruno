@@ -37,11 +37,5 @@ tests {
     const url = bru.getVar('request-url');
     expect(url).to.include('/ping');
   });
-  
-  test("request should have custom header set by hook", function() {
-    // Note: This would need to be verified via response if server echoes headers
-    // For now, we verify the hook executed
-    expect(true).to.be.true;
-  });
 }
 

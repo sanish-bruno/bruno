@@ -23,12 +23,6 @@ script:hooks {
     // Test: Can use setEnvVar
     bru.setEnvVar('hook-set-env-var', 'env-value-from-hook');
     
-    // Test: Can use getCollectionVar
-    const collectionVar = bru.getCollectionVar('collection-var');
-    if (collectionVar) {
-      bru.setVar('got-collection-var', collectionVar);
-    }
-    
     // Test: Can use interpolate
     const interpolated = bru.interpolate('{{host}}/ping');
     bru.setVar('interpolated-url', interpolated);

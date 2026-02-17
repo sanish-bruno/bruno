@@ -18,7 +18,7 @@ tests {
   
   test("should have set start time", function() {
     const startTime = bru.getVar('start-time');
-    expect(parseInt(startTime)).to.be.a('number');
+    expect(parseInt(startTime, 10)).to.be.above(0);
   });
   
   test("should have set env var in onBeforeCollectionRun", function() {

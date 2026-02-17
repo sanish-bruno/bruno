@@ -23,6 +23,7 @@ const { HooksRuntime, HookManager } = require('@usebruno/js');
 const decomment = require('decomment');
 const command = 'run [paths...]';
 const desc = 'Run one or more requests/folders';
+
 const HOOK_EVENTS = HookManager.EVENTS;
 
 const formatTestSummary = (label, maxLength, passed, failed, total, errorCount = 0, skippedCount = 0) => {

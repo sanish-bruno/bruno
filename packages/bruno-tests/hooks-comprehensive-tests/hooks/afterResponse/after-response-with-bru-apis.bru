@@ -58,4 +58,9 @@ tests {
     const body = bru.getVar('last-response-body');
     expect(body).to.equal('pong');
   });
+
+  test("should have interpolated status", function() {
+    const interpolatedStatus = bru.getVar('interpolated-status');
+    expect(interpolatedStatus).to.equal('Status: 200');
+  });
 }

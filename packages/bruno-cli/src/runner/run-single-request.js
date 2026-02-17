@@ -7,10 +7,8 @@ const prepareRequest = require('./prepare-request');
 const interpolateVars = require('./interpolate-vars');
 const { interpolateString, interpolateObject } = require('./interpolate-string');
 const { ScriptRuntime, TestRuntime, VarsRuntime, AssertRuntime, HooksRuntime, HookManager, BrunoResponse } = require('@usebruno/js');
-const HOOK_EVENTS = HookManager.EVENTS;
 const { stripExtension } = require('../utils/filesystem');
 const { getOptions } = require('../utils/bru');
-const { getTreePathFromCollectionToItem } = require('../utils/collection');
 const https = require('https');
 const { HttpProxyAgent } = require('http-proxy-agent');
 const { SocksProxyAgent } = require('socks-proxy-agent');
@@ -27,6 +25,8 @@ const { addDigestInterceptor, getHttpHttpsAgents, makeAxiosInstance: makeAxiosIn
 const { getCACertificates, transformProxyConfig } = require('@usebruno/requests');
 const { getOAuth2Token } = require('../utils/oauth2');
 const { encodeUrl, buildFormUrlEncodedPayload, extractPromptVariables, isFormData } = require('@usebruno/common').utils;
+
+const HOOK_EVENTS = HookManager.EVENTS;
 
 const onConsoleLog = (type, args) => {
   console[type](...args);
@@ -249,8 +249,6 @@ const runSingleRequest = async function (
     // Add certsAndProxyConfig to request object for bru.sendRequest
     request.certsAndProxyConfig = certsAndProxyConfig;
 
-    // Get request tree path for hook extraction
-    const requestTreePath = getTreePathFromCollectionToItem(collection, item);
     const collectionName = collection?.brunoConfig?.name;
 
     // Initialize hooks once for this request lifecycle (reused for beforeRequest + afterResponse)
@@ -322,6 +320,9 @@ const runSingleRequest = async function (
     shouldStopRunnerExecution = runnerState.shouldStopRunnerExecution;
 
     if (beforeRequestHooksResult?.skipRequest) {
+      if (hooksCtx?.hookManager) {
+        hooksCtx.hookManager.dispose();
+      }
       return createSkippedResponse({
         filename: relativeItemPathname,
         request,
@@ -353,6 +354,9 @@ const runSingleRequest = async function (
         shouldStopRunnerExecution = runnerState.shouldStopRunnerExecution;
 
         if (result?.skipRequest) {
+          if (hooksCtx?.hookManager) {
+            hooksCtx.hookManager.dispose();
+          }
           return createSkippedResponse({
             filename: relativeItemPathname,
             request,
@@ -384,6 +388,9 @@ const runSingleRequest = async function (
         logResults(preRequestTestResults, 'Pre-Request Tests');
 
         // Pre-request script error: execution didn't complete (request never sent). Return early so we don't run the HTTP request, post-response script, assertions, or tests.
+        if (hooksCtx?.hookManager) {
+          hooksCtx.hookManager.dispose();
+        }
         return {
           test: {
             filename: relativeItemPathname
@@ -815,6 +822,9 @@ const runSingleRequest = async function (
         response.headers.delete('request-duration');
       } else {
         console.log(chalk.red(stripExtension(relativeItemPathname)) + chalk.dim(` (${err.message})`));
+        if (hooksCtx?.hookManager) {
+          hooksCtx.hookManager.dispose();
+        }
         return {
           test: {
             filename: relativeItemPathname

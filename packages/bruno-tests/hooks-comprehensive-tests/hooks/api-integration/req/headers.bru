@@ -54,5 +54,10 @@ tests {
     expect(body['x-bulk-1']).to.equal('bulk-1');
     expect(body['x-bulk-2']).to.equal('bulk-2');
   });
+
+  test("req.getHeaders - returns headers count", function() {
+    const count = bru.getVar('headers-count');
+    expect(parseInt(count, 10)).to.be.at.least(1);
+  });
 }
 

@@ -9,7 +9,6 @@ const { ipcMain } = require('electron');
 const { each, get, extend, cloneDeep, merge } = require('lodash');
 const { NtlmClient } = require('axios-ntlm');
 const { VarsRuntime, AssertRuntime, ScriptRuntime, TestRuntime, HooksRuntime, HookManager, BrunoResponse } = require('@usebruno/js');
-const HOOK_EVENTS = HookManager.EVENTS;
 const { encodeUrl } = require('@usebruno/common').utils;
 const { extractPromptVariables } = require('@usebruno/common').utils;
 const { interpolateString } = require('./interpolate-string');
@@ -39,6 +38,7 @@ const { getCertsAndProxyConfig, buildCertsAndProxyConfig } = require('./cert-uti
 const { buildFormUrlEncodedPayload, isFormData } = require('@usebruno/common').utils;
 
 const ERROR_OCCURRED_WHILE_EXECUTING_REQUEST = 'Error occurred while executing the request!';
+const HOOK_EVENTS = HookManager.EVENTS;
 
 const saveCookies = (url, headers) => {
   if (preferencesUtil.shouldStoreCookies()) {
@@ -538,7 +538,7 @@ const registerNetworkIpc = (mainWindow) => {
     try {
       const hooksRuntime = new HooksRuntime({ runtime: options.scriptingConfig?.runtime });
       const result = await hooksRuntime.runHooks({
-        hooksFile,
+        hooksFile: decomment(hooksFile),
         request: options.request || {},
         envVariables: options.envVars,
         runtimeVariables: options.runtimeVariables,
@@ -809,9 +809,6 @@ const registerNetworkIpc = (mainWindow) => {
     const scriptingConfig = get(brunoConfig, 'scripts', {});
     scriptingConfig.runtime = getJsSandboxRuntime(collection);
 
-    // Get request tree path for hooks execution
-    const requestTreePath = getTreePathFromCollectionToItem(collection, item);
-
     try {
       request.signal = abortController.signal;
       saveCancelToken(cancelTokenUid, abortController);
@@ -900,6 +897,9 @@ const registerNetworkIpc = (mainWindow) => {
       });
 
       if (preRequestError) {
+        if (hooksCtx?.hookManager) {
+          hooksCtx.hookManager.dispose();
+        }
         return Promise.reject(preRequestError);
       }
       const axiosInstance = await configureRequest(
@@ -1556,9 +1556,6 @@ const registerNetworkIpc = (mainWindow) => {
             // Add certsAndProxyConfig to request object for bru.sendRequest
             request.certsAndProxyConfig = certsAndProxyConfig;
 
-            // Get request tree path for hooks execution (hooks are merged in prepareRequest via mergeScripts)
-            const requestTreePath = getTreePathFromCollectionToItem(collection, item);
-
             // Hook execution options
             const hookOptions = {
               request,
@@ -2029,14 +2026,6 @@ const registerNetworkIpc = (mainWindow) => {
             }
 
             if (stopRunnerExecution) {
-              deleteCancelToken(cancelTokenUid);
-              mainWindow.webContents.send('main:run-folder-event', {
-                type: 'testrun-ended',
-                collectionUid,
-                folderUid,
-                statusText: 'collection run was terminated!',
-                runCompletionTime: new Date().toISOString()
-              });
               break;
             }
 
@@ -2090,6 +2079,7 @@ const registerNetworkIpc = (mainWindow) => {
           type: 'testrun-ended',
           collectionUid,
           folderUid,
+          ...(stopRunnerExecution ? { statusText: 'collection run was terminated!' } : {}),
           runCompletionTime: new Date().toISOString()
         });
       } catch (error) {

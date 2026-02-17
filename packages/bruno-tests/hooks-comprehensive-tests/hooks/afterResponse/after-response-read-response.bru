@@ -10,10 +10,6 @@ get {
   auth: none
 }
 
-script:post-response {
-  console.log("res.getSize()",res.getSize())
-}
-
 script:hooks {
   bru.hooks.http.onAfterResponse(({ res }) => {
     // Test: Read status code
@@ -77,7 +73,7 @@ tests {
   
   test("should have read response time", function() {
     const responseTime = bru.getVar('response-time');
-    expect(parseInt(responseTime)).to.be.a('number');
+    expect(parseInt(responseTime)).to.be.above(0);
   });
   
   test("should have read URL", function() {
