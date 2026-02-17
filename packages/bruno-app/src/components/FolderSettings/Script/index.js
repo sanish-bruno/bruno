@@ -91,6 +91,7 @@ const Script = ({ collection, folder }) => {
   const items = flattenItems(folder.items || []);
   const hasPreRequestScriptError = items.some((i) => isItemARequest(i) && i.preRequestScriptErrorMessage);
   const hasPostResponseScriptError = items.some((i) => isItemARequest(i) && i.postResponseScriptErrorMessage);
+  const hasHooksScriptError = items.some((i) => isItemARequest(i) && i.hookScriptErrorMessage);
 
   return (
     <StyledWrapper className="w-full flex flex-col h-full">
@@ -114,7 +115,9 @@ const Script = ({ collection, folder }) => {
           </TabsTrigger>
           <TabsTrigger value="hooks">
             Hooks
-            {hooks && hooks.trim().length > 0 && <StatusDot />}
+            {hooks && hooks.trim().length > 0 && (
+              <StatusDot type={hasHooksScriptError ? 'error' : 'default'} />
+            )}
           </TabsTrigger>
         </TabsList>
 

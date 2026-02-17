@@ -34,7 +34,7 @@ export const updateFolderHooksScript = (state, action) => {
   const folder = collection ? findItemInCollection(collection, action.payload.folderUid) : null;
   if (folder) {
     if (!folder.draft) {
-      folder.draft = cloneDeep(folder.root);
+      folder.draft = cloneDeep(folder.root) || {};
     }
     set(folder, 'draft.request.script.hooks', action.payload.hooks);
   }
