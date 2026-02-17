@@ -10,30 +10,33 @@ get {
   auth: none
 }
 
+vars:pre-request {
+  testRequestVar: request-value
+}
+
 script:hooks {
   bru.hooks.http.onBeforeRequest(({ req }) => {
     // These may return undefined if not set, which is valid
-    bru.setVar('collection-var', bru.getCollectionVar('testCollectionVar') || 'not-set');
-    bru.setVar('folder-var', bru.getFolderVar('testFolderVar') || 'not-set');
-    bru.setVar('request-var', bru.getRequestVar('testRequestVar') || 'not-set');
+    bru.setVar('collection-var', bru.getCollectionVar('testCollectionVar'));
+    bru.setVar('folder-var', bru.getFolderVar('testFolderVar'));
+    bru.setVar('request-var', bru.getRequestVar('testRequestVar'));
   });
 }
 
 tests {
   test("bru.getCollectionVar - callable in hook", function() {
-    // Just verify the function is callable and returns expected type
     const val = bru.getVar('collection-var');
-    expect(val).to.be.a('string');
+    expect(val).to.equal('collection-value');
   });
-  
+
   test("bru.getFolderVar - callable in hook", function() {
     const val = bru.getVar('folder-var');
-    expect(val).to.be.a('string');
+    expect(val).to.equal('folder-value');
   });
-  
+
   test("bru.getRequestVar - callable in hook", function() {
     const val = bru.getVar('request-var');
-    expect(val).to.be.a('string');
+    expect(val).to.equal('request-value');
   });
 }
 

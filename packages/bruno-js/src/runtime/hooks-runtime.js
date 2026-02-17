@@ -6,6 +6,16 @@ const HookManager = require('../hook-manager');
 const { cleanJson } = require('../utils');
 const { executeQuickJsVmAsync } = require('../sandbox/quickjs');
 
+const formatHookError = (error) => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return String(error);
+};
+
 /**
  * HooksRuntime manages the execution of hook scripts in a sandboxed environment.
  *
@@ -133,20 +143,28 @@ class HooksRuntime {
 
     // Execute hooks script
     // Note: Hooks need the VM to persist so registered handlers can be called later
-    if (this.runtime === 'nodevm') {
-      await runScriptInNodeVm({
-        script: hooksFile,
-        context,
-        collectionPath,
-        scriptingConfig
-      });
-    } else {
-      // QuickJS: persist the VM so hook handlers can be called later during the collection run
-      await executeQuickJsVmAsync({
-        script: hooksFile,
-        context: context,
-        collectionPath
-      });
+    try {
+      if (this.runtime === 'nodevm') {
+        await runScriptInNodeVm({
+          script: hooksFile,
+          context,
+          collectionPath,
+          scriptingConfig
+        });
+      } else {
+        // QuickJS: persist the VM so hook handlers can be called later during the collection run
+        await executeQuickJsVmAsync({
+          script: hooksFile,
+          context: context,
+          collectionPath
+        });
+      }
+    } catch (error) {
+      const message = formatHookError(error);
+      if (onConsoleLog && typeof onConsoleLog === 'function') {
+        onConsoleLog('error', [`Hook script error: ${message}`]);
+      }
+      throw new Error(`Hook script error: ${message}`);
     }
 
     return buildResult();
