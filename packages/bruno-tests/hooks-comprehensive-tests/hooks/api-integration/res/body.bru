@@ -17,7 +17,7 @@ body:json {
 }
 
 script:hooks {
-  bru.hooks.http.onAfterResponse(({ res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     const body = res.getBody();
     bru.setVar('original-message', body.message);
     

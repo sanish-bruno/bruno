@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onAfterResponse(({ req, res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     // Test: Can access req object
     const reqUrl = req.getUrl();
     const reqName = req.getName();

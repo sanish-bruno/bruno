@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     bru.setVar('original-url', req.getUrl());
     req.setUrl(req.getUrl().replace('/headers', '/ping'));
   });

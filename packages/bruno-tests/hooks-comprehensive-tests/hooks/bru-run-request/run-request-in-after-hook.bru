@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onAfterResponse(async ({ res }) => {
+  bru.hooks.http.onAfterResponse(async () => {
     console.log('[afterResponse] Testing bru.runRequest API');
     console.log('[afterResponse] Main request status:', res.getStatus());
     

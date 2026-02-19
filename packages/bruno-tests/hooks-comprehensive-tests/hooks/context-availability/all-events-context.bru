@@ -1,0 +1,55 @@
+meta {
+  name: all-events-context
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{host}}/ping
+  body: none
+  auth: none
+}
+
+script:hooks {
+  // beforeRequest: bru + req available, res null
+  bru.hooks.http.onBeforeRequest(() => {
+    bru.setVar('ctx-all-br-bru', (bru != null).toString());
+    bru.setVar('ctx-all-br-req', (typeof req !== 'undefined' && req != null).toString());
+    bru.setVar('ctx-all-br-res-null', (typeof res === 'undefined' || res == null) ? 'true' : 'false');
+  });
+
+  // afterResponse: bru + req + res all available
+  bru.hooks.http.onAfterResponse(() => {
+    bru.setVar('ctx-all-ar-bru', (bru != null).toString());
+    bru.setVar('ctx-all-ar-req', (typeof req !== 'undefined' && req != null).toString());
+    bru.setVar('ctx-all-ar-res', (typeof res !== 'undefined' && res != null).toString());
+  });
+}
+
+tests {
+  // beforeRequest context matrix
+  test("beforeRequest: bru available", function() {
+    expect(bru.getVar('ctx-all-br-bru')).to.equal('true');
+  });
+
+  test("beforeRequest: req available", function() {
+    expect(bru.getVar('ctx-all-br-req')).to.equal('true');
+  });
+
+  test("beforeRequest: res is null", function() {
+    expect(bru.getVar('ctx-all-br-res-null')).to.equal('true');
+  });
+
+  // afterResponse context matrix
+  test("afterResponse: bru available", function() {
+    expect(bru.getVar('ctx-all-ar-bru')).to.equal('true');
+  });
+
+  test("afterResponse: req available", function() {
+    expect(bru.getVar('ctx-all-ar-req')).to.equal('true');
+  });
+
+  test("afterResponse: res available", function() {
+    expect(bru.getVar('ctx-all-ar-res')).to.equal('true');
+  });
+}

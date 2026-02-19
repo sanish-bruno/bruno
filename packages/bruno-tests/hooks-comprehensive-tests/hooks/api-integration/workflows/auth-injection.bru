@@ -11,13 +11,13 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     req.setHeader('Authorization', 'Bearer mock-token-12345');
     req.setHeader('X-API-Key', 'api-key-67890');
     req.setHeader('X-Request-ID', 'req-' + Date.now());
   });
   
-  bru.hooks.http.onAfterResponse(({ res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     const body = res.getBody();
     bru.setVar('auth-header-echoed', body['authorization']);
     bru.setVar('api-key-echoed', body['x-api-key']);

@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     bru.setEnvVar('hook-env-test', 'env-value-from-hook');
   });
 }

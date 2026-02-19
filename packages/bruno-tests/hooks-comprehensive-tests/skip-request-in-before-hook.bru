@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     console.log('[beforeRequest] Testing bru.runner.skipRequest() API');
     
     // Set a marker to confirm the hook executed

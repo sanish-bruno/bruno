@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     console.log('[beforeRequest] ERROR: This request should have been skipped by setNextRequest!');
     
     // If this request runs, set an error marker

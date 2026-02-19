@@ -1,0 +1,28 @@
+meta {
+  name: context-runner-hooks
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{host}}/ping
+  body: none
+  auth: none
+}
+
+tests {
+  test("beforeCollectionRun: bru should be available", function() {
+    const val = bru.getVar('ctx-bcr-bru');
+    expect(val).to.equal('true');
+  });
+
+  test("beforeCollectionRun: req should be null", function() {
+    const val = bru.getVar('ctx-bcr-req-null');
+    expect(val).to.equal('true');
+  });
+
+  test("beforeCollectionRun: res should be null", function() {
+    const val = bru.getVar('ctx-bcr-res-null');
+    expect(val).to.equal('true');
+  });
+}

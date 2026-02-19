@@ -11,9 +11,20 @@ script:hooks {
   // ============================================
   
   // ============================================
+  // Runner Hooks: Context Availability Tests
+  // ============================================
+
+  // Test: beforeCollectionRun should have bru but NOT req/res
+  bru.hooks.runner.onBeforeCollectionRun(() => {
+    bru.setVar('ctx-bcr-bru', (bru != null).toString());
+    bru.setVar('ctx-bcr-req-null', (typeof req === 'undefined' || req == null) ? 'true' : 'false');
+    bru.setVar('ctx-bcr-res-null', (typeof res === 'undefined' || res == null) ? 'true' : 'false');
+  });
+
+  // ============================================
   // Runner Hooks: onBeforeCollectionRun Tests
   // ============================================
-  
+
   // Test: Sync onBeforeCollectionRun hook
   bru.hooks.runner.onBeforeCollectionRun(() => {
     console.log('[onBeforeCollectionRun] Sync hook - Collection run starting...');
@@ -136,6 +147,13 @@ script:hooks {
     console.log('[onAfterCollectionRun] Async cleanup completed');
   });
   
+  // Test: afterCollectionRun should have bru but NOT req/res
+  bru.hooks.runner.onAfterCollectionRun(() => {
+    bru.setVar('ctx-acr-bru', (bru != null).toString());
+    bru.setVar('ctx-acr-req-null', (typeof req === 'undefined' || req == null) ? 'true' : 'false');
+    bru.setVar('ctx-acr-res-null', (typeof res === 'undefined' || res == null) ? 'true' : 'false');
+  });
+
   // Test: onAfterCollectionRun with cleanup operations
   bru.hooks.runner.onAfterCollectionRun(async() => {
     console.log('[onAfterCollectionRun] Cleanup hook - Performing cleanup operations...');
@@ -170,7 +188,13 @@ script:hooks {
     bru.deleteVar('collection-run-request-status');
     bru.deleteVar('collection-run-request-tested');
     bru.deleteVar('collection-run-request-error');
-    
+    bru.deleteVar('ctx-bcr-bru');
+    bru.deleteVar('ctx-bcr-req-null');
+    bru.deleteVar('ctx-bcr-res-null');
+    bru.deleteVar('ctx-acr-bru');
+    bru.deleteVar('ctx-acr-req-null');
+    bru.deleteVar('ctx-acr-res-null');
+
     await bru.sleep(300);
     console.log('[onAfterCollectionRun] Cleanup complete - all test variables removed');
   });
@@ -182,7 +206,7 @@ script:hooks {
   // ============================================
   
   // Collection-level HTTP hook: Track requests for onAfterCollectionRun tests
-  bru.hooks.http.onAfterResponse(({ res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     const count = bru.getVar('request-count') || 0;
     bru.setVar('request-count', parseInt(count) + 1);
     if (res.getStatus() === 200) {
@@ -194,7 +218,7 @@ script:hooks {
   });
   
   // Collection-level HTTP hook: Example onBeforeRequest hook
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     // This hook runs before every request in the collection
     // Individual request files in hooks/ subdirectories have their own request-level hooks
     console.log('[Collection-level HTTP Hook] Before request:', req.getName());

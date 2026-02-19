@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     bru.setVar('test-value', 'interpolated');
     bru.setVar('interpolate-result', bru.interpolate('Result: {{test-value}}'));
     bru.setVar('interpolate-env', bru.interpolate('Host: {{host}}'));

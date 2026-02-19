@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onAfterResponse(({ res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     bru.setVar('res-status', res.getStatus());
     bru.setVar('res-status-text', res.getStatusText());
   });

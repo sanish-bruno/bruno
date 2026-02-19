@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onAfterResponse(({ res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     bru.setVar('res-time', res.getResponseTime());
     bru.setVar('res-url', res.getUrl());
     bru.setVar('res-size', res.getSize());

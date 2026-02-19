@@ -12,7 +12,7 @@ get {
 
 script:hooks {
   // First hook
-  bru.hooks.http.onAfterResponse(({ res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     console.log('[afterResponse 1] First hook executing');
     bru.setVar('hook-order', '1');
     const status = res.getStatus();
@@ -20,7 +20,7 @@ script:hooks {
   });
   
   // Second hook
-  bru.hooks.http.onAfterResponse(({ res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     console.log('[afterResponse 2] Second hook executing');
     const order = bru.getVar('hook-order') || '';
     bru.setVar('hook-order', order + ',2');
@@ -30,7 +30,7 @@ script:hooks {
   });
   
   // Third hook (async)
-  bru.hooks.http.onAfterResponse(async({ res }) => {
+  bru.hooks.http.onAfterResponse(async() => {
     console.log('[afterResponse 3] Third hook (async) executing');
     await bru.sleep(200);
     const order = bru.getVar('hook-order') || '';

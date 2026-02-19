@@ -503,21 +503,17 @@ const addBruShimToContext = (vm, bru) => {
           }
         });
 
-        // Add req/res shim objects to data if provided
-        // In QuickJS, when you setProp, the parent object takes ownership
-        // We dispose them after setting to avoid keeping extra references
-        // but dataHandle will maintain the reference until it's disposed
-        if (data.req) {
-          const reqShim = createBrunoRequestShim(vmInstance, data.req);
-          vmInstance.setProp(dataHandle, 'req', reqShim);
-          // Dispose the original handle - dataHandle now owns the reference
+        // Set req/res as VM globals (not on dataHandle) so handlers can access them directly
+        // Read from bru._hookReq/_hookRes which are set by updateContext() before each hook invocation
+        if (bru._hookReq) {
+          const reqShim = createBrunoRequestShim(vmInstance, bru._hookReq);
+          vmInstance.setProp(vmInstance.global, 'req', reqShim);
           reqShim.dispose();
         }
 
-        if (data.res) {
-          const resShim = createBrunoResponseShim(vmInstance, data.res);
-          vmInstance.setProp(dataHandle, 'res', resShim);
-          // Dispose the original handle - dataHandle now owns the reference
+        if (bru._hookRes) {
+          const resShim = createBrunoResponseShim(vmInstance, bru._hookRes);
+          vmInstance.setProp(vmInstance.global, 'res', resShim);
           resShim.dispose();
         }
 

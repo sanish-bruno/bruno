@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     console.log('[beforeRequest] Target request reached via setNextRequest jump');
     
     // Mark that target was reached

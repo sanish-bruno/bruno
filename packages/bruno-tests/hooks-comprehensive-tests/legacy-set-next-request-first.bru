@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     console.log('[beforeRequest] Testing legacy bru.setNextRequest() API');
     
     // Clear any previous markers
@@ -23,7 +23,7 @@ script:hooks {
     console.log('[beforeRequest] Legacy first request starting');
   });
   
-  bru.hooks.http.onAfterResponse(({ res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     console.log('[afterResponse] Using legacy bru.setNextRequest() to jump to target');
     
     // Use the legacy API to jump to the target request

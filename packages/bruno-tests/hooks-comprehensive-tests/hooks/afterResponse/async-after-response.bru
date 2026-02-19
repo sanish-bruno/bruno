@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onAfterResponse(async({ req, res }) => {
+  bru.hooks.http.onAfterResponse(async() => {
     console.log('[afterResponse] Starting async hook...');
     
     // Test: Can use async/await

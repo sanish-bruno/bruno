@@ -8,7 +8,7 @@ const mime = require('mime-types');
 const { ipcMain } = require('electron');
 const { each, get, extend, cloneDeep, merge } = require('lodash');
 const { NtlmClient } = require('axios-ntlm');
-const { VarsRuntime, AssertRuntime, ScriptRuntime, TestRuntime, HooksRuntime, HookManager, BrunoResponse } = require('@usebruno/js');
+const { VarsRuntime, AssertRuntime, ScriptRuntime, TestRuntime, HooksRuntime, HookManager, BrunoRequest, BrunoResponse } = require('@usebruno/js');
 const { encodeUrl } = require('@usebruno/common').utils;
 const { extractPromptVariables } = require('@usebruno/common').utils;
 const { interpolateString } = require('./interpolate-string');
@@ -580,12 +580,12 @@ const registerNetworkIpc = (mainWindow) => {
     if (!hooksCtx?.hookManager) return null;
 
     try {
-      const enrichedEventData = {
-        ...eventData,
-        req: hooksCtx.req || eventData.req,
-        res: eventData.response ? new BrunoResponse(eventData.response) : (hooksCtx.res || eventData.res)
-      };
-      await hooksCtx.hookManager.call(hookEvent, enrichedEventData);
+      // Update VM globals with current req/res before invoking handlers
+      const req = eventData.request ? new BrunoRequest(eventData.request) : null;
+      const res = eventData.response ? new BrunoResponse(eventData.response) : null;
+      hooksCtx.updateContext?.({ req, res });
+
+      await hooksCtx.hookManager.call(hookEvent, eventData);
 
       // Re-read runner control signals from bru instance AFTER handlers have executed
       // Handlers may have called bru.runner.setNextRequest(), skipRequest(), or stopExecution()

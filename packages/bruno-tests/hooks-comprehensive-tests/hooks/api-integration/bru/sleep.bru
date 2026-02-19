@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(async ({ req }) => {
+  bru.hooks.http.onBeforeRequest(async () => {
     const start = Date.now();
     await bru.sleep(100);
     bru.setVar('sleep-elapsed', Date.now() - start);

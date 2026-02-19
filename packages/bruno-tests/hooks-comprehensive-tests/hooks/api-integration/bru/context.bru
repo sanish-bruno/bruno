@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     bru.setVar('hook-collection-name', bru.getCollectionName());
     bru.setVar('hook-env-name', bru.getEnvName());
     bru.setVar('hook-process-env', bru.getProcessEnv('PATH'));
