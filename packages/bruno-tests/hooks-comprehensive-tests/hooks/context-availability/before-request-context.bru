@@ -1,0 +1,64 @@
+meta {
+  name: before-request-context
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{host}}/ping
+  body: none
+  auth: none
+}
+
+script:hooks {
+  bru.hooks.http.onBeforeRequest(() => {
+    // bru should be available
+    bru.setVar('ctx-req-br-bru', (bru != null).toString());
+
+    // req should be available with methods
+    bru.setVar('ctx-req-br-req-avail', (typeof req !== 'undefined' && req != null).toString());
+    if (typeof req !== 'undefined' && req != null) {
+      bru.setVar('ctx-req-br-has-getUrl', (typeof req.getUrl === 'function').toString());
+      bru.setVar('ctx-req-br-has-getName', (typeof req.getName === 'function').toString());
+    }
+
+    // res should be null in beforeRequest
+    bru.setVar('ctx-req-br-res-null', (typeof res === 'undefined' || res == null) ? 'true' : 'false');
+  });
+}
+
+tests {
+  // Request-level beforeRequest context
+  test("beforeRequest: bru should be available", function() {
+    expect(bru.getVar('ctx-req-br-bru')).to.equal('true');
+  });
+
+  test("beforeRequest: req should be available", function() {
+    expect(bru.getVar('ctx-req-br-req-avail')).to.equal('true');
+  });
+
+  test("beforeRequest: req.getUrl should be a function", function() {
+    expect(bru.getVar('ctx-req-br-has-getUrl')).to.equal('true');
+  });
+
+  test("beforeRequest: req.getName should be a function", function() {
+    expect(bru.getVar('ctx-req-br-has-getName')).to.equal('true');
+  });
+
+  test("beforeRequest: res should be null", function() {
+    expect(bru.getVar('ctx-req-br-res-null')).to.equal('true');
+  });
+
+  // Folder-level beforeRequest context (set by folder.bru)
+  test("folder beforeRequest: bru should be available", function() {
+    expect(bru.getVar('ctx-folder-br-bru')).to.equal('true');
+  });
+
+  test("folder beforeRequest: req should be available", function() {
+    expect(bru.getVar('ctx-folder-br-req-avail')).to.equal('true');
+  });
+
+  test("folder beforeRequest: res should be null", function() {
+    expect(bru.getVar('ctx-folder-br-res-null')).to.equal('true');
+  });
+}

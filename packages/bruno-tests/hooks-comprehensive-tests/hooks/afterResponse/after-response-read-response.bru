@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onAfterResponse(({ res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     // Test: Read status code
     const status = res.getStatus();
     bru.setVar('response-status', status.toString());

@@ -15,7 +15,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     bru.setVar('req-name', req.getName());
     bru.setVar('req-tags', req.getTags());
     bru.setVar('req-timeout-before', req.getTimeout());

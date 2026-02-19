@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     console.log('[beforeRequest] Original URL:', req.getUrl());
     console.log('[beforeRequest] Original method:', req.getMethod());
     

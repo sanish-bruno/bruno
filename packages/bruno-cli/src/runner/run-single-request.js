@@ -6,7 +6,7 @@ const { forOwn, isUndefined, isNull, each, extend, get, compact } = require('lod
 const prepareRequest = require('./prepare-request');
 const interpolateVars = require('./interpolate-vars');
 const { interpolateString, interpolateObject } = require('./interpolate-string');
-const { ScriptRuntime, TestRuntime, VarsRuntime, AssertRuntime, HooksRuntime, HookManager, BrunoResponse } = require('@usebruno/js');
+const { ScriptRuntime, TestRuntime, VarsRuntime, AssertRuntime, HooksRuntime, HookManager, BrunoRequest, BrunoResponse } = require('@usebruno/js');
 const { stripExtension } = require('../utils/filesystem');
 const { getOptions } = require('../utils/bru');
 const https = require('https');
@@ -282,12 +282,12 @@ const runSingleRequest = async function (
       if (!hooksCtx?.hookManager) return null;
 
       try {
-        const enrichedEventData = {
-          ...eventData,
-          req: hooksCtx.req || eventData.req,
-          res: eventData.response ? new BrunoResponse(eventData.response) : (hooksCtx.res || eventData.res)
-        };
-        await hooksCtx.hookManager.call(hookEvent, enrichedEventData);
+        // Update VM globals with current req/res before invoking handlers
+        const req = eventData.request ? new BrunoRequest(eventData.request) : null;
+        const res = eventData.response ? new BrunoResponse(eventData.response) : null;
+        hooksCtx.updateContext?.({ req, res });
+
+        await hooksCtx.hookManager.call(hookEvent, eventData);
 
         // Re-read runner control signals from bru instance AFTER handlers have executed
         const bru = hooksCtx.__bru;

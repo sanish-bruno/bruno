@@ -1,7 +1,5 @@
 const { runScriptInNodeVm } = require('../sandbox/node-vm');
 const Bru = require('../bru');
-const BrunoRequest = require('../bruno-request');
-const BrunoResponse = require('../bruno-response');
 const HookManager = require('../hook-manager');
 const { cleanJson } = require('../utils');
 const { executeQuickJsVmAsync } = require('../sandbox/quickjs');
@@ -69,7 +67,6 @@ class HooksRuntime {
     const {
       hooksFile,
       request,
-      response,
       envVariables,
       runtimeVariables,
       collectionPath,
@@ -92,14 +89,10 @@ class HooksRuntime {
     const certsAndProxyConfig = request?.certsAndProxyConfig || null;
     const bru = new Bru(this.runtime, envVariables, runtimeVariables, processEnvVars, collectionPath, collectionVariables, folderVariables, requestVariables, globalEnvironmentVariables, oauth2CredentialVariables, collectionName, promptVariables, certsAndProxyConfig, activeHookManager);
 
-    // Create BrunoRequest and BrunoResponse wrappers (similar to ScriptRuntime)
-    const req = request ? new BrunoRequest(request) : null;
-    const res = response ? new BrunoResponse(response) : null;
-
     const context = {
       bru,
-      req,
-      res
+      req: null,
+      res: null
     };
 
     if (onConsoleLog && typeof onConsoleLog === 'function') {
@@ -132,8 +125,14 @@ class HooksRuntime {
       skipRequest: bru.skipRequest,
       stopExecution: bru.stopExecution,
       __bru: bru,
-      req,
-      res
+      updateContext: ({ req, res }) => {
+        // NodeVM: update live context so handler closures see new globals
+        context.req = req || null;
+        context.res = res || null;
+        // Both runtimes: store on bru for QuickJS executeHandler to read
+        bru._hookReq = req || null;
+        bru._hookRes = res || null;
+      }
     });
 
     // Lazy VM creation: If no hooks file, return early without creating a VM

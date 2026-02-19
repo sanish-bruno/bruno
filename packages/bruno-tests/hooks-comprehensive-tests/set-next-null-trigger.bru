@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     console.log('[beforeRequest] Testing bru.runner.setNextRequest(null) API');
     
     // Clear any previous error markers
@@ -23,7 +23,7 @@ script:hooks {
     console.log('[beforeRequest] setNextRequest(null) trigger starting');
   });
   
-  bru.hooks.http.onAfterResponse(({ res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     console.log('[afterResponse] Setting next request to null to stop runner gracefully');
     
     // Setting nextRequest to null should stop the runner gracefully

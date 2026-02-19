@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     console.log('[beforeRequest] Testing bru.runner.setNextRequest() API');
     
     // Clear any previous markers
@@ -23,7 +23,7 @@ script:hooks {
     console.log('[beforeRequest] First request starting');
   });
   
-  bru.hooks.http.onAfterResponse(({ res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     console.log('[afterResponse] Setting next request to jump to target');
     
     // Jump to the target request, skipping the intermediate request

@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onAfterResponse(({ req, res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     // Test: Can use bru APIs based on response
     const status = res.getStatus();
     const body = res.getBody();

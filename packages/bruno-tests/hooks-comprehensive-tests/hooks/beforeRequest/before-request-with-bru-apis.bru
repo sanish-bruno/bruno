@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     // Test: Can use getEnvVar
     const host = bru.getEnvVar('host');
     console.log('[beforeRequest] Host from env:', host);

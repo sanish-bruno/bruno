@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(async ({ req }) => {
+  bru.hooks.http.onBeforeRequest(async () => {
     console.log('[beforeRequest] Testing bru.runRequest API');
     
     // Call another request using bru.runRequest

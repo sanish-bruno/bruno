@@ -12,7 +12,7 @@ get {
 
 script:hooks {
   // beforeRequest uses data (simulating data from onBeforeCollectionRun)
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     console.log('[beforeRequest] Using setup data');
     // Simulate token from collection-level setup
     const token = bru.getVar('test-token') || 'default-token';
@@ -21,7 +21,7 @@ script:hooks {
   });
   
   // afterResponse reads and stores response data
-  bru.hooks.http.onAfterResponse(({ res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     console.log('[afterResponse] Storing response data');
     const status = res.getStatus();
     bru.setVar('last-response-status', status.toString());

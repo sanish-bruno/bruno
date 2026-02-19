@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     // Test: Can access req object
     const url = req.getUrl();
     console.log('[beforeRequest] Request URL:', url);

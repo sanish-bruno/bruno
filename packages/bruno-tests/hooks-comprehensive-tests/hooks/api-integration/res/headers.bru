@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onAfterResponse(({ res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     bru.setVar('res-content-type', res.getHeader('content-type'));
     bru.setVar('res-headers-count', Object.keys(res.getHeaders()).length);
   });

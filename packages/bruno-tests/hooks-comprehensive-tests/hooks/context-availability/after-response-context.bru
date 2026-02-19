@@ -1,0 +1,71 @@
+meta {
+  name: after-response-context
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{host}}/ping
+  body: none
+  auth: none
+}
+
+script:hooks {
+  bru.hooks.http.onAfterResponse(() => {
+    // bru should be available
+    bru.setVar('ctx-req-ar-bru', (bru != null).toString());
+
+    // req should be available with methods
+    bru.setVar('ctx-req-ar-req-avail', (typeof req !== 'undefined' && req != null).toString());
+    if (typeof req !== 'undefined' && req != null) {
+      bru.setVar('ctx-req-ar-has-getUrl', (typeof req.getUrl === 'function').toString());
+    }
+
+    // res should be available with methods
+    bru.setVar('ctx-req-ar-res-avail', (typeof res !== 'undefined' && res != null).toString());
+    if (typeof res !== 'undefined' && res != null) {
+      bru.setVar('ctx-req-ar-has-getStatus', (typeof res.getStatus === 'function').toString());
+      bru.setVar('ctx-req-ar-has-getBody', (typeof res.getBody === 'function').toString());
+    }
+  });
+}
+
+tests {
+  // Request-level afterResponse context
+  test("afterResponse: bru should be available", function() {
+    expect(bru.getVar('ctx-req-ar-bru')).to.equal('true');
+  });
+
+  test("afterResponse: req should be available", function() {
+    expect(bru.getVar('ctx-req-ar-req-avail')).to.equal('true');
+  });
+
+  test("afterResponse: req.getUrl should be a function", function() {
+    expect(bru.getVar('ctx-req-ar-has-getUrl')).to.equal('true');
+  });
+
+  test("afterResponse: res should be available", function() {
+    expect(bru.getVar('ctx-req-ar-res-avail')).to.equal('true');
+  });
+
+  test("afterResponse: res.getStatus should be a function", function() {
+    expect(bru.getVar('ctx-req-ar-has-getStatus')).to.equal('true');
+  });
+
+  test("afterResponse: res.getBody should be a function", function() {
+    expect(bru.getVar('ctx-req-ar-has-getBody')).to.equal('true');
+  });
+
+  // Folder-level afterResponse context (set by folder.bru)
+  test("folder afterResponse: bru should be available", function() {
+    expect(bru.getVar('ctx-folder-ar-bru')).to.equal('true');
+  });
+
+  test("folder afterResponse: req should be available", function() {
+    expect(bru.getVar('ctx-folder-ar-req-avail')).to.equal('true');
+  });
+
+  test("folder afterResponse: res should be available", function() {
+    expect(bru.getVar('ctx-folder-ar-res-avail')).to.equal('true');
+  });
+}

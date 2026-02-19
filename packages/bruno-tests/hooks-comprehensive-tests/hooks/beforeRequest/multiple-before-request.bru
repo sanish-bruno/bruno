@@ -12,14 +12,14 @@ get {
 
 script:hooks {
   // First hook
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     console.log('[beforeRequest 1] First hook executing');
     bru.setVar('hook-order', '1');
     req.setHeader('X-Hook-Order', '1');
   });
   
   // Second hook
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     console.log('[beforeRequest 2] Second hook executing');
     const order = bru.getVar('hook-order') || '';
     bru.setVar('hook-order', order + ',2');
@@ -29,7 +29,7 @@ script:hooks {
   });
   
   // Third hook (async)
-  bru.hooks.http.onBeforeRequest(async({ req }) => {
+  bru.hooks.http.onBeforeRequest(async() => {
     console.log('[beforeRequest 3] Third hook (async) executing');
     await bru.sleep(200);
     const order = bru.getVar('hook-order') || '';

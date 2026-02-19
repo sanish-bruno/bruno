@@ -77,27 +77,22 @@ async function runScriptInNodeVm({ script, context, collectionPath, scriptingCon
  * @returns {Object} Script context object
  */
 function buildScriptContext(context, scriptingConfig) {
-  const scriptContext = {
-    ...context,
+  // Mutate context in-place so that the VM global and the caller's `context`
+  // reference the same object.  This is critical for hooks-runtime, which sets
+  // `context.req` / `context.res` *after* the VM is created — a spread-copy
+  // would never see those updates.
+  context.console = wrapConsoleWithSerializers(context.console);
+  context.scriptingConfig = scriptingConfig;
 
-    // Bruno context (wrap console with Set/Map support)
-    console: wrapConsoleWithSerializers(context.console),
-
-    // Configuration for nested module loading
-    scriptingConfig: scriptingConfig,
-
-    // Safe globals from allowlist (Node.js/Web APIs only, not ECMAScript built-ins)
-    ...Object.fromEntries(
-      safeGlobals
-        .filter((key) => global[key] !== undefined)
-        .map((key) => [key, global[key]])
-    )
-  };
+  // Safe globals from allowlist (Node.js/Web APIs only, not ECMAScript built-ins)
+  safeGlobals
+    .filter((key) => global[key] !== undefined)
+    .forEach((key) => { context[key] = global[key]; });
 
   // Add TypedArrays from host for compatibility with host APIs (TextEncoder, crypto, etc.)
-  mixinTypedArrays(scriptContext);
+  mixinTypedArrays(context);
 
-  return scriptContext;
+  return context;
 }
 
 module.exports = {

@@ -20,7 +20,7 @@ body:json {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     const body = req.getBody();
     // Transform: add timestamp to each user
     body.users = body.users.map(u => ({ ...u, timestamp: Date.now() }));
@@ -28,7 +28,7 @@ script:hooks {
     req.setBody(body);
   });
   
-  bru.hooks.http.onAfterResponse(({ res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     const body = res.getBody();
     // Transform: add summary
     res.setBody({

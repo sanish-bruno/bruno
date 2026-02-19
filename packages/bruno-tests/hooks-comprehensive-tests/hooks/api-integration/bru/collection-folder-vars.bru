@@ -15,7 +15,7 @@ vars:pre-request {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     // These may return undefined if not set, which is valid
     bru.setVar('collection-var', bru.getCollectionVar('testCollectionVar'));
     bru.setVar('folder-var', bru.getFolderVar('testFolderVar'));

@@ -4,6 +4,7 @@ const VarsRuntime = require('./runtime/vars-runtime');
 const AssertRuntime = require('./runtime/assert-runtime');
 const HooksRuntime = require('./runtime/hooks-runtime');
 const HookManager = require('./hook-manager');
+const BrunoRequest = require('./bruno-request');
 const BrunoResponse = require('./bruno-response');
 const { runScriptInNodeVm } = require('./sandbox/node-vm');
 
@@ -14,6 +15,7 @@ module.exports = {
   AssertRuntime,
   HooksRuntime,
   HookManager,
+  BrunoRequest,
   BrunoResponse,
   runScriptInNodeVm
 };

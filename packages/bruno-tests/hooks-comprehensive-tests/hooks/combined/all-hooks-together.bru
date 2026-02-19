@@ -12,13 +12,13 @@ get {
 
 script:hooks {
   // beforeRequest hook
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     console.log('[beforeRequest] Before request');
     bru.setVar('hook-execution-order', 'beforeRequest');
   });
   
   // afterResponse hook
-  bru.hooks.http.onAfterResponse(({ req, res }) => {
+  bru.hooks.http.onAfterResponse(() => {
     console.log('[afterResponse] After response');
     const order = bru.getVar('hook-execution-order') || '';
     bru.setVar('hook-execution-order', order + ',afterResponse');

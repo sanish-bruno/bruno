@@ -11,7 +11,7 @@ get {
 }
 
 script:hooks {
-  bru.hooks.http.onBeforeRequest(({ req }) => {
+  bru.hooks.http.onBeforeRequest(() => {
     bru.setVar('hook-string', 'hello');
     bru.setVar('hook-number', 42);
     bru.setVar('hook-object', { key: 'value' });

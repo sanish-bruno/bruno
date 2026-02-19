@@ -1,0 +1,19 @@
+meta {
+  name: context-availability
+}
+
+script:hooks {
+  // Folder-level HTTP hook: beforeRequest context check
+  bru.hooks.http.onBeforeRequest(() => {
+    bru.setVar('ctx-folder-br-bru', (bru != null).toString());
+    bru.setVar('ctx-folder-br-req-avail', (typeof req !== 'undefined' && req != null).toString());
+    bru.setVar('ctx-folder-br-res-null', (typeof res === 'undefined' || res == null) ? 'true' : 'false');
+  });
+
+  // Folder-level HTTP hook: afterResponse context check
+  bru.hooks.http.onAfterResponse(() => {
+    bru.setVar('ctx-folder-ar-bru', (bru != null).toString());
+    bru.setVar('ctx-folder-ar-req-avail', (typeof req !== 'undefined' && req != null).toString());
+    bru.setVar('ctx-folder-ar-res-avail', (typeof res !== 'undefined' && res != null).toString());
+  });
+}
