@@ -3,8 +3,10 @@ const xmlFormat = require('xml-formatter');
 const { interpolate: _interpolate } = require('@usebruno/common');
 const { sendRequest, createSendRequest } = require('@usebruno/requests').scripting;
 const { jar: createCookieJar } = require('@usebruno/requests').cookies;
+const HookManager = require('./hook-manager');
 
 const variableNameRegex = /^[\w-.]*$/;
+const HOOK_EVENTS = HookManager.EVENTS;
 
 class Bru {
   // Private class field - truly private, not accessible from outside the class
@@ -410,18 +412,18 @@ class Bru {
     this.hooks = {
       runner: {
         onBeforeCollectionRun: (handler) => {
-          return this.#hookManager.on('runner:beforeCollectionRun', handler);
+          return this.#hookManager.on(HOOK_EVENTS.RUNNER_BEFORE_COLLECTION_RUN, handler);
         },
         onAfterCollectionRun: (handler) => {
-          return this.#hookManager.on('runner:afterCollectionRun', handler);
+          return this.#hookManager.on(HOOK_EVENTS.RUNNER_AFTER_COLLECTION_RUN, handler);
         }
       },
       http: {
         onBeforeRequest: (handler) => {
-          return this.#hookManager.on('http:beforeRequest', handler);
+          return this.#hookManager.on(HOOK_EVENTS.HTTP_BEFORE_REQUEST, handler);
         },
         onAfterResponse: (handler) => {
-          return this.#hookManager.on('http:afterResponse', handler);
+          return this.#hookManager.on(HOOK_EVENTS.HTTP_AFTER_RESPONSE, handler);
         }
       }
     };

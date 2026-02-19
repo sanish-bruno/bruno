@@ -235,20 +235,24 @@ const mergeScripts = (collection, request, requestTreePath, scriptFlow) => {
     request.tests = compact(testScripts.map(wrapScriptInClosure)).join(os.EOL + os.EOL);
   }
 
-  // Handle hooks - always merged sequentially: collection -> folders -> request
+  // Handle hooks based on scriptFlow
   let requestHooks = request?.script?.hooks || '';
-  const hooksScripts = [
-    collectionHooks,
-    ...combinedHooks,
-    requestHooks
-  ];
-
-  // Ensure request.script exists
-  if (!request.script) {
-    request.script = {};
+  if (scriptFlow === 'sequential') {
+    const hooksScripts = [
+      collectionHooks,
+      ...combinedHooks,
+      requestHooks
+    ];
+    request.script.hooks = compact(hooksScripts.map(wrapScriptInClosure)).join(os.EOL + os.EOL);
+  } else {
+    // Reverse order for non-sequential flow
+    const hooksScripts = [
+      requestHooks,
+      ...[...combinedHooks].reverse(),
+      collectionHooks
+    ];
+    request.script.hooks = compact(hooksScripts.map(wrapScriptInClosure)).join(os.EOL + os.EOL);
   }
-
-  request.script.hooks = compact(hooksScripts.map(wrapScriptInClosure)).join(os.EOL + os.EOL);
 };
 
 const flattenItems = (items = []) => {
