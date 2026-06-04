@@ -1954,7 +1954,7 @@ export const saveEnvironment = (variables, environmentUid, collectionUid) => (di
        - if persistedValue exists, save that (explicit persisted case)
        - otherwise save the current UI value (treat as user-authored)
      */
-    const persisted = buildPersistedEnvVariables(variables, { mode: 'save' });
+    const persisted = buildPersistedEnvVariables(variables);
     environment.variables = persisted;
 
     const { ipcRenderer } = window;
@@ -2260,78 +2260,59 @@ export const updateVariableInScope = (variableName, newValue, scopeInfo, collect
   });
 };
 
-export const mergeAndPersistEnvironment
-  = ({ persistentEnvVariables, collectionUid }) =>
-    (_dispatch, getState) => {
-      return new Promise((resolve, reject) => {
-        const state = getState();
-        const collection = findCollectionByUid(state.collections.collections, collectionUid);
+export const persistActiveEnvironment = (collectionUid) => (dispatch, getState) => {
+  const state = getState();
+  const collection = findCollectionByUid(state.collections.collections, collectionUid);
+  if (!collection) return;
 
-        if (!collection) {
-          return reject(new Error('Collection not found'));
-        }
+  const environment = findEnvironmentInCollection(collection, collection.activeEnvironmentUid);
+  if (!environment) return;
 
-        const environmentUid = collection.activeEnvironmentUid;
-        if (!environmentUid) {
-          return reject(new Error('No active environment found'));
-        }
+  dispatch(saveEnvironment(environment.variables, environment.uid, collectionUid));
+};
 
-        const collectionCopy = cloneDeep(collection);
-        const environment = findEnvironmentInCollection(collectionCopy, environmentUid);
-        if (!environment) {
-          return reject(new Error('Environment not found'));
-        }
+export const collectionVariablesUpdateEvent = ({ collectionVariables, collectionUid, persist }) => (dispatch, getState) => {
+  if (!collectionVariables || !collectionUid) return;
+  if (!persist) return;
 
-        // Only proceed if there are persistent variables to save
-        if (!persistentEnvVariables || Object.keys(persistentEnvVariables).length === 0) {
-          return resolve();
-        }
+  const state = getState();
+  const collection = findCollectionByUid(state.collections.collections, collectionUid);
+  if (!collection) return;
 
-        let existingVars = environment.variables || [];
+  const root = collection.draft?.root || collection.root || {};
+  let vars = cloneDeep(get(root, 'request.vars.req', []));
+  const scriptVarNames = new Set(Object.keys(collectionVariables));
 
-        let normalizedNewVars = Object.entries(persistentEnvVariables).map(([name, value]) => ({
-          uid: uuid(),
-          name,
-          value,
-          type: 'text',
-          enabled: true,
-          secret: false
-        }));
-
-        const merged = existingVars.map((v) => {
-          const found = normalizedNewVars.find((nv) => nv.name === v.name);
-          if (found) {
-            return { ...v, value: found.value };
-          }
-          return v;
-        });
-        normalizedNewVars.forEach((nv) => {
-          if (!merged.some((v) => v.name === nv.name)) {
-            merged.push(nv);
-          }
-        });
-
-        // Save all non-ephemeral vars and all variables that were previously persisted
-        const persistedNames = new Set(Object.keys(persistentEnvVariables));
-
-        // Add all existing non-ephemeral variables to persistedNames so they are preserved
-        existingVars.forEach((v) => {
-          if (!v.ephemeral) {
-            persistedNames.add(v.name);
-          }
-        });
-
-        const environmentToSave = cloneDeep(environment);
-        environmentToSave.variables = buildPersistedEnvVariables(merged, { mode: 'merge', persistedNames });
-
-        const { ipcRenderer } = window;
-        environmentSchema
-          .validate(environmentToSave)
-          .then(() => ipcRenderer.invoke('renderer:save-environment', collection.pathname, environmentToSave))
-          .then(resolve)
-          .catch(reject);
+  // Update existing vars, add new ones
+  Object.entries(collectionVariables).forEach(([name, value]) => {
+    const existing = vars.find((v) => v.name === name);
+    if (existing) {
+      existing.value = String(value);
+    } else {
+      vars.push({
+        uid: uuid(),
+        name,
+        value: String(value),
+        enabled: true
       });
-    };
+    }
+  });
+
+  // Remove enabled vars deleted by the script; keep disabled vars
+  vars = vars.filter((v) => !v.enabled || scriptVarNames.has(v.name));
+
+  // Update Redux state and save to disk
+  each(vars, (v) => {
+    const existingVar = get(root, 'request.vars.req', []).find((ev) => ev.uid === v.uid);
+    if (existingVar) {
+      dispatch(updateCollectionVar({ collectionUid, type: 'request', var: v }));
+    } else {
+      dispatch(addCollectionVar({ collectionUid, type: 'request', var: v }));
+    }
+  });
+
+  dispatch(saveCollectionRoot(collectionUid));
+};
 
 export const selectEnvironment = (environmentUid, collectionUid) => (dispatch, getState) => {
   return new Promise((resolve, reject) => {

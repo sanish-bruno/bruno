@@ -1,35 +1,17 @@
 import { uuid } from './common/index';
 
-const isPersistableEnvVarForMerge = (persistedNames) => (v) => {
-  return !v?.ephemeral || v?.persistedValue !== undefined || (v?.name && persistedNames.has(v.name));
-};
-
-const toPersistedEnvVarForMerge = (persistedNames) => (v) => {
+const stripEphemeralMetadata = (v) => {
   const { ephemeral, persistedValue, ...rest } = v || {};
-  if (v?.ephemeral && persistedValue !== undefined && !(v?.name && persistedNames.has(v.name))) {
-    return { ...rest, value: persistedValue };
-  }
   return rest;
 };
 
-const toPersistedEnvVarForSave = (v) => {
-  const { ephemeral, persistedValue, ...rest } = v || {};
-  return v?.ephemeral ? (persistedValue !== undefined ? { ...rest, value: persistedValue } : rest) : rest;
-};
-
 /*
- High-level builder for persisted variables
- - mode 'save': write what the user sees
- - mode 'merge': write only allowed vars (non-ephemeral, ephemerals with persistedValue, or explicitly persisted this run)
+ Build variables suitable for persisting to disk.
+ Strips internal metadata (ephemeral, persistedValue) that should not be written to the environment file.
 */
-export const buildPersistedEnvVariables = (variables, { mode, persistedNames } = {}) => {
+export const buildPersistedEnvVariables = (variables) => {
   const src = Array.isArray(variables) ? variables : [];
-  if (mode === 'merge') {
-    const names = persistedNames instanceof Set ? persistedNames : new Set();
-    return src.filter(isPersistableEnvVarForMerge(names)).map(toPersistedEnvVarForMerge(names));
-  }
-  // default to save mode
-  return src.map(toPersistedEnvVarForSave);
+  return src.map(stripEphemeralMetadata);
 };
 
 export const buildEnvVariable = ({ envVariable: obj, withUuid = false }) => {

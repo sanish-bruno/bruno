@@ -265,49 +265,62 @@ export const deleteGlobalEnvironment = ({ environmentUid }) => (dispatch, getSta
 };
 
 export const globalEnvironmentsUpdateEvent = ({ globalEnvironmentVariables }) => (dispatch, getState) => {
+  if (!globalEnvironmentVariables) return;
+
+  const state = getState();
+  const globalEnvironments = state?.globalEnvironments?.globalEnvironments || [];
+  const environmentUid = state?.globalEnvironments?.activeGlobalEnvironmentUid;
+  const environment = globalEnvironments?.find((env) => env?.uid == environmentUid);
+
+  if (!environment || !environmentUid) return;
+
+  let variables = cloneDeep(environment?.variables);
+  const scriptVarNames = new Set(Object.keys(globalEnvironmentVariables));
+
+  // Update the value of each variable if it's present in "globalEnvironmentVariables"
+  variables = variables?.map?.((variable) => ({
+    ...variable,
+    value: has(globalEnvironmentVariables, variable?.name)
+      ? globalEnvironmentVariables[variable?.name]
+      : variable?.value
+  }));
+
+  // Add new variables created by the script
+  Object.entries(globalEnvironmentVariables)?.forEach?.(([key, value]) => {
+    const isAnExistingVariable = variables?.find((v) => v?.name == key);
+    if (!isAnExistingVariable) {
+      variables.push({
+        uid: uuid(),
+        name: key,
+        value,
+        type: 'text',
+        secret: false,
+        enabled: true
+      });
+    }
+  });
+
+  // Remove enabled vars deleted by the script; keep disabled vars
+  variables = variables.filter((v) => !v.enabled || scriptVarNames.has(v.name));
+
+  dispatch(_saveGlobalEnvironment({ environmentUid, variables }));
+};
+
+export const persistActiveGlobalEnvironment = () => (dispatch, getState) => {
   return new Promise((resolve, reject) => {
     const { ipcRenderer } = window;
-    if (!globalEnvironmentVariables) resolve();
-
     const state = getState();
     const { workspaceUid, workspacePath } = getWorkspaceContext(state);
     const globalEnvironments = state?.globalEnvironments?.globalEnvironments || [];
     const environmentUid = state?.globalEnvironments?.activeGlobalEnvironmentUid;
     const environment = globalEnvironments?.find((env) => env?.uid == environmentUid);
 
-    if (!environment || !environmentUid) {
-      return resolve();
-    }
+    if (!environment || !environmentUid) return resolve();
 
-    let variables = cloneDeep(environment?.variables);
-
-    // "globalEnvironmentVariables" will include only the enabled variables and newly added variables created using the script.
-    // Update the value of each variable if it's present in "globalEnvironmentVariables", otherwise keep the existing value.
-    variables = variables?.map?.((variable) => ({
-      ...variable,
-      value: has(globalEnvironmentVariables, variable?.name)
-        ? globalEnvironmentVariables[variable?.name]
-        : variable?.value
-    }));
-
-    Object.entries(globalEnvironmentVariables)?.forEach?.(([key, value]) => {
-      const isAnExistingVariable = variables?.find((v) => v?.name == key);
-      if (!isAnExistingVariable) {
-        variables.push({
-          uid: uuid(),
-          name: key,
-          value,
-          type: 'text',
-          secret: false,
-          enabled: true
-        });
-      }
-    });
-
-    const environmentToSave = { ...environment, variables };
+    const variables = cloneDeep(environment.variables);
 
     environmentSchema
-      .validate(environmentToSave)
+      .validate({ ...environment, variables })
       .then(() => ipcRenderer.invoke('renderer:save-global-environment', {
         environmentUid,
         variables,
@@ -315,7 +328,6 @@ export const globalEnvironmentsUpdateEvent = ({ globalEnvironmentVariables }) =>
         workspaceUid,
         workspacePath
       }))
-      .then(() => dispatch(_saveGlobalEnvironment({ environmentUid, variables })))
       .then(resolve)
       .catch(reject);
   });

@@ -25,7 +25,8 @@ import {
   streamDataReceived,
   setDotEnvVariables
 } from 'providers/ReduxStore/slices/collections';
-import { collectionAddEnvFileEvent, openCollectionEvent, hydrateCollectionWithUiStateSnapshot, mergeAndPersistEnvironment } from 'providers/ReduxStore/slices/collections/actions';
+import { collectionAddEnvFileEvent, openCollectionEvent, hydrateCollectionWithUiStateSnapshot, persistActiveEnvironment, collectionVariablesUpdateEvent } from 'providers/ReduxStore/slices/collections/actions';
+import { persistActiveGlobalEnvironment } from 'providers/ReduxStore/slices/global-environments';
 import {
   workspaceOpenedEvent,
   workspaceConfigUpdatedEvent,
@@ -202,14 +203,20 @@ const useIpcEvents = () => {
 
     const removeScriptEnvUpdateListener = ipcRenderer.on('main:script-environment-update', (val) => {
       dispatch(scriptEnvironmentUpdateEvent(val));
-    });
-
-    const removePersistentEnvVariablesUpdateListener = ipcRenderer.on('main:persistent-env-variables-update', (val) => {
-      dispatch(mergeAndPersistEnvironment(val));
+      if (val.persist && val.collectionUid) {
+        dispatch(persistActiveEnvironment(val.collectionUid));
+      }
     });
 
     const removeGlobalEnvironmentVariablesUpdateListener = ipcRenderer.on('main:global-environment-variables-update', (val) => {
       dispatch(globalEnvironmentsUpdateEvent(val));
+      if (val.persist) {
+        dispatch(persistActiveGlobalEnvironment());
+      }
+    });
+
+    const removeCollectionVariablesUpdateListener = ipcRenderer.on('main:collection-variables-update', (val) => {
+      dispatch(collectionVariablesUpdateEvent(val));
     });
 
     const removeCollectionRenamedListener = ipcRenderer.on('main:collection-renamed', (val) => {
@@ -373,7 +380,7 @@ const useIpcEvents = () => {
       removeHttpStreamNewDataListener();
       removeHttpStreamEndListener();
       removeCollectionLoadingStateListener();
-      removePersistentEnvVariablesUpdateListener();
+      removeCollectionVariablesUpdateListener();
       removeSystemResourcesListener();
       gitVersionListener();
     };

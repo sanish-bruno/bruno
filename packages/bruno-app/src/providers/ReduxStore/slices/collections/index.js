@@ -386,72 +386,37 @@ export const collectionsSlice = createSlice({
       }
     },
     scriptEnvironmentUpdateEvent: (state, action) => {
-      const { collectionUid, envVariables, runtimeVariables, persistentEnvVariables } = action.payload;
+      const { collectionUid, envVariables, runtimeVariables } = action.payload;
       const collection = findCollectionByUid(state.collections, collectionUid);
 
       if (collection) {
-        const activeEnvironmentUid = collection.activeEnvironmentUid;
-        const activeEnvironment = findEnvironmentInCollection(collection, activeEnvironmentUid);
+        const activeEnvironment = findEnvironmentInCollection(collection, collection.activeEnvironmentUid);
 
         if (activeEnvironment) {
-          const existingEnvVarNames = new Set(Object.keys(envVariables));
+          const scriptVarNames = new Set(Object.keys(envVariables));
 
-          // Update or add variables that exist in envVariables
+          // Update existing vars and add new ones from the script
           forOwn(envVariables, (value, key) => {
+            if (key === '__name__') return;
             const variable = find(activeEnvironment.variables, (v) => v.name === key);
-            const isPersistent = persistentEnvVariables && persistentEnvVariables[key] !== undefined;
-
             if (variable) {
-              // For updates coming from scripts, treat them as ephemeral overlays unless they are persistent.
-              if (variable.value !== value) {
-                /*
-                 Overlay (persist: false): keep new value in Redux for UI and mark ephemeral
-                 so it isn't written to disk. persistedValue stores the previous on-disk value;
-                 save/persist uses that base unless the key is explicitly persisted.
-                */
-                const previousValue = variable.value;
-                variable.value = value;
-                variable.ephemeral = !isPersistent;
-                if (variable.persistedValue === undefined) {
-                  variable.persistedValue = previousValue;
-                }
-              }
+              variable.value = value;
             } else {
-              // __name__ is a private variable used to store the name of the environment
-              // this is not a user defined variable and hence should not be updated
-              if (key !== '__name__') {
-                activeEnvironment.variables.push({
-                  name: key,
-                  value,
-                  secret: false,
-                  enabled: true,
-                  type: 'text',
-                  uid: uuid(),
-                  ephemeral: !isPersistent
-                });
-              }
+              activeEnvironment.variables.push({
+                name: key,
+                value,
+                secret: false,
+                enabled: true,
+                type: 'text',
+                uid: uuid()
+              });
             }
           });
 
-          // Handle variables that were deleted via bru.deleteEnvVar()
-          activeEnvironment.variables = activeEnvironment.variables.filter((variable) => {
-            // Variable still exists in envVariables after script execution - keep it
-            if (existingEnvVarNames.has(variable.name)) {
-              return true;
-            }
-
-            // Variable was deleted via bru.deleteEnvVar() - handle based on its state
-            // If variable was modified by script (has persistedValue), restore original value
-            if (variable.persistedValue !== undefined) {
-              variable.value = variable.persistedValue;
-              variable.ephemeral = false;
-              delete variable.persistedValue;
-              return true;
-            }
-
-            // Remove variable: either ephemeral (created by scripts) or non-ephemeral deleted via API
-            return false;
-          });
+          // Remove enabled vars that were deleted by the script; keep disabled vars untouched
+          activeEnvironment.variables = activeEnvironment.variables.filter((v) =>
+            !v.enabled || scriptVarNames.has(v.name)
+          );
         }
 
         collection.runtimeVariables = runtimeVariables;

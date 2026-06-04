@@ -68,6 +68,9 @@ const defaultPreferences = {
     sslSession: {
       enabled: false
     }
+  },
+  scripting: {
+    envVariablesPersistEnabled: true
   }
 };
 
@@ -135,6 +138,9 @@ const preferencesSchema = Yup.object().shape({
     sslSession: Yup.object({
       enabled: Yup.boolean()
     })
+  }).optional(),
+  scripting: Yup.object({
+    envVariablesPersistEnabled: Yup.boolean()
   }).optional()
 });
 
@@ -334,6 +340,9 @@ const preferencesUtil = {
   },
   isSslSessionCachingEnabled: () => {
     return get(getPreferences(), 'cache.sslSession.enabled', false);
+  },
+  shouldPersistScriptEnvChanges: () => {
+    return get(getPreferences(), 'scripting.envVariablesPersistEnabled', true);
   },
   hasLaunchedBefore: () => {
     return get(getPreferences(), 'onboarding.hasLaunchedBefore', false);

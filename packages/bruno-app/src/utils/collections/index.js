@@ -606,7 +606,7 @@ export const transformCollectionToSaveToExportAsFile = (collection, options = {}
   // Save environments without runtime metadata (ephemeral/persistedValue)
   collectionToSave.environments = (collection.environments || []).map((env) => ({
     ...env,
-    variables: buildPersistedEnvVariables(env?.variables, { mode: 'save' })
+    variables: buildPersistedEnvVariables(env?.variables)
   }));
 
   collectionToSave.root = {

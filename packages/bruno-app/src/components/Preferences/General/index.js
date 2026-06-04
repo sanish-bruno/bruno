@@ -60,7 +60,10 @@ const General = () => {
     oauth2: Yup.object({
       useSystemBrowser: Yup.boolean()
     }),
-    defaultLocation: Yup.string().max(1024)
+    defaultLocation: Yup.string().max(1024),
+    scripting: Yup.object({
+      envVariablesPersistEnabled: Yup.boolean()
+    })
   });
 
   const formik = useFormik({
@@ -83,7 +86,10 @@ const General = () => {
       oauth2: {
         useSystemBrowser: get(preferences, 'request.oauth2.useSystemBrowser', false)
       },
-      defaultLocation: get(preferences, 'general.defaultLocation', '')
+      defaultLocation: get(preferences, 'general.defaultLocation', ''),
+      scripting: {
+        envVariablesPersistEnabled: get(preferences, 'scripting.envVariablesPersistEnabled', true)
+      }
     },
     validationSchema: preferencesSchema,
     onSubmit: async (values) => {
@@ -122,6 +128,9 @@ const General = () => {
         },
         general: {
           defaultLocation: newPreferences.defaultLocation
+        },
+        scripting: {
+          envVariablesPersistEnabled: newPreferences.scripting.envVariablesPersistEnabled
         }
       }))
       .catch((err) => console.log(err) && toast.error('Failed to update preferences'));
@@ -300,6 +309,19 @@ const General = () => {
           />
           <label className="block ml-2 select-none" htmlFor="oauth2.useSystemBrowser">
             Use System Browser for OAuth2 Authorization
+          </label>
+        </div>
+        <div className="flex items-center mt-2">
+          <input
+            id="scripting.envVariablesPersistEnabled"
+            type="checkbox"
+            name="scripting.envVariablesPersistEnabled"
+            checked={formik.values.scripting.envVariablesPersistEnabled}
+            onChange={formik.handleChange}
+            className="mousetrap mr-0"
+          />
+          <label className="block ml-2 select-none" htmlFor="scripting.envVariablesPersistEnabled">
+            Persist environment changes from scripts
           </label>
         </div>
         <div className="flex flex-col mt-6">
