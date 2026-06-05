@@ -2271,9 +2271,8 @@ export const persistActiveEnvironment = (collectionUid) => (dispatch, getState) 
   dispatch(saveEnvironment(environment.variables, environment.uid, collectionUid));
 };
 
-export const collectionVariablesUpdateEvent = ({ collectionVariables, collectionUid, persist }) => (dispatch, getState) => {
+export const collectionVariablesUpdateEvent = ({ collectionVariables, collectionUid }) => (dispatch, getState) => {
   if (!collectionVariables || !collectionUid) return;
-  if (!persist) return;
 
   const state = getState();
   const collection = findCollectionByUid(state.collections.collections, collectionUid);

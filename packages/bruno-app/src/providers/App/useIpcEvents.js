@@ -203,16 +203,14 @@ const useIpcEvents = () => {
 
     const removeScriptEnvUpdateListener = ipcRenderer.on('main:script-environment-update', (val) => {
       dispatch(scriptEnvironmentUpdateEvent(val));
-      if (val.persist && val.collectionUid) {
+      if (val.collectionUid) {
         dispatch(persistActiveEnvironment(val.collectionUid));
       }
     });
 
     const removeGlobalEnvironmentVariablesUpdateListener = ipcRenderer.on('main:global-environment-variables-update', (val) => {
       dispatch(globalEnvironmentsUpdateEvent(val));
-      if (val.persist) {
-        dispatch(persistActiveGlobalEnvironment());
-      }
+      dispatch(persistActiveGlobalEnvironment());
     });
 
     const removeCollectionVariablesUpdateListener = ipcRenderer.on('main:collection-variables-update', (val) => {
