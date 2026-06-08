@@ -2300,7 +2300,7 @@ export const collectionVariablesUpdateEvent = ({ collectionVariables, collection
   // Remove enabled vars deleted by the script; keep disabled vars
   vars = vars.filter((v) => !v.enabled || scriptVarNames.has(v.name));
 
-  // Update Redux state and save to disk
+  // Update Redux state
   each(vars, (v) => {
     const existingVar = get(root, 'request.vars.req', []).find((ev) => ev.uid === v.uid);
     if (existingVar) {
@@ -2310,7 +2310,14 @@ export const collectionVariablesUpdateEvent = ({ collectionVariables, collection
     }
   });
 
-  dispatch(saveCollectionRoot(collectionUid));
+  // Save to disk silently (no toast — this is an automatic script-driven save, not a user action)
+  const collectionCopy = cloneDeep(findCollectionByUid(getState().collections.collections, collectionUid));
+  if (collectionCopy) {
+    const collectionRootToSave = transformCollectionRootToSave(collectionCopy);
+    const { ipcRenderer } = window;
+    ipcRenderer.invoke('renderer:save-collection-root', collectionCopy.pathname, collectionRootToSave, collectionCopy.brunoConfig)
+      .catch((err) => console.error('Failed to persist collection variables:', err));
+  }
 };
 
 export const selectEnvironment = (environmentUid, collectionUid) => (dispatch, getState) => {
