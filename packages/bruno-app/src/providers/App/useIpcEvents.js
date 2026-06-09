@@ -200,6 +200,9 @@ const useIpcEvents = () => {
       }
     });
 
+    // TODO: These listeners write to disk unconditionally on every script execution, even if no
+    // variables changed. This is acceptable for now (env files are small, writes are async), but
+    // for high-frequency runner scenarios we should add a dirty flag to the Bru instance to skip unchanged writes.
     const removeScriptEnvUpdateListener = ipcRenderer.on('main:script-environment-update', (val) => {
       dispatch(scriptEnvironmentUpdateEvent(val));
       if (val.collectionUid) {
