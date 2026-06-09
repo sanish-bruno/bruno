@@ -26,7 +26,6 @@ import {
   setDotEnvVariables
 } from 'providers/ReduxStore/slices/collections';
 import { collectionAddEnvFileEvent, openCollectionEvent, hydrateCollectionWithUiStateSnapshot, persistActiveEnvironment, collectionVariablesUpdateEvent } from 'providers/ReduxStore/slices/collections/actions';
-import { persistActiveGlobalEnvironment } from 'providers/ReduxStore/slices/global-environments';
 import {
   workspaceOpenedEvent,
   workspaceConfigUpdatedEvent,
@@ -210,7 +209,6 @@ const useIpcEvents = () => {
 
     const removeGlobalEnvironmentVariablesUpdateListener = ipcRenderer.on('main:global-environment-variables-update', (val) => {
       dispatch(globalEnvironmentsUpdateEvent(val));
-      dispatch(persistActiveGlobalEnvironment());
     });
 
     const removeCollectionVariablesUpdateListener = ipcRenderer.on('main:collection-variables-update', (val) => {

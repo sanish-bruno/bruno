@@ -303,34 +303,23 @@ export const globalEnvironmentsUpdateEvent = ({ globalEnvironmentVariables }) =>
   // Remove enabled vars deleted by the script; keep disabled vars
   variables = variables.filter((v) => !v.enabled || scriptVarNames.has(v.name));
 
+  // Update Redux state
   dispatch(_saveGlobalEnvironment({ environmentUid, variables }));
-};
 
-export const persistActiveGlobalEnvironment = () => (dispatch, getState) => {
-  return new Promise((resolve, reject) => {
-    const { ipcRenderer } = window;
-    const state = getState();
-    const { workspaceUid, workspacePath } = getWorkspaceContext(state);
-    const globalEnvironments = state?.globalEnvironments?.globalEnvironments || [];
-    const environmentUid = state?.globalEnvironments?.activeGlobalEnvironmentUid;
-    const environment = globalEnvironments?.find((env) => env?.uid == environmentUid);
-
-    if (!environment || !environmentUid) return resolve();
-
-    const variables = cloneDeep(environment.variables);
-
-    environmentSchema
-      .validate({ ...environment, variables })
-      .then(() => ipcRenderer.invoke('renderer:save-global-environment', {
-        environmentUid,
-        variables,
-        color: environment.color,
-        workspaceUid,
-        workspacePath
-      }))
-      .then(resolve)
-      .catch(reject);
-  });
+  // Persist to disk using the computed variables directly
+  // (not from getState(), which may not reflect the dispatch above yet)
+  const { ipcRenderer } = window;
+  const { workspaceUid, workspacePath } = getWorkspaceContext(state);
+  environmentSchema
+    .validate({ ...environment, variables })
+    .then(() => ipcRenderer.invoke('renderer:save-global-environment', {
+      environmentUid,
+      variables,
+      color: environment.color,
+      workspaceUid,
+      workspacePath
+    }))
+    .catch((err) => console.error('Failed to persist global environment:', err));
 };
 
 export const updateGlobalEnvironmentColor = (environmentUid, color) => (dispatch, getState) => {

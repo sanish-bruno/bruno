@@ -2300,7 +2300,7 @@ export const collectionVariablesUpdateEvent = ({ collectionVariables, collection
   // Remove enabled vars deleted by the script; keep disabled vars
   vars = vars.filter((v) => !v.enabled || scriptVarNames.has(v.name));
 
-  // Update Redux state
+  // Update Redux state via reducers (creates a draft)
   each(vars, (v) => {
     const existingVar = get(root, 'request.vars.req', []).find((ev) => ev.uid === v.uid);
     if (existingVar) {
@@ -2310,12 +2310,13 @@ export const collectionVariablesUpdateEvent = ({ collectionVariables, collection
     }
   });
 
-  // Save to disk silently (no toast — this is an automatic script-driven save, not a user action)
+  // Save to disk silently, then clear the draft (script-driven save, not a user action)
   const collectionCopy = cloneDeep(findCollectionByUid(getState().collections.collections, collectionUid));
   if (collectionCopy) {
     const collectionRootToSave = transformCollectionRootToSave(collectionCopy);
     const { ipcRenderer } = window;
     ipcRenderer.invoke('renderer:save-collection-root', collectionCopy.pathname, collectionRootToSave, collectionCopy.brunoConfig)
+      .then(() => dispatch(saveCollectionDraft({ collectionUid })))
       .catch((err) => console.error('Failed to persist collection variables:', err));
   }
 };
