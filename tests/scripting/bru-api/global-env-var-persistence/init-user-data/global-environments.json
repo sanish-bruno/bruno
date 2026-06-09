@@ -1,0 +1,27 @@
+{
+  "environments": [
+    {
+      "uid": "globalEnvPersistTestUid",
+      "name": "global",
+      "variables": [
+        {
+          "uid": "baseUrlUid",
+          "name": "baseUrl",
+          "value": "https://echo.usebruno.com",
+          "type": "text",
+          "secret": false,
+          "enabled": true
+        },
+        {
+          "uid": "toBeDeletedUid",
+          "name": "toBeDeleted",
+          "value": "this-should-be-removed",
+          "type": "text",
+          "secret": false,
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "activeGlobalEnvironmentUid": "globalEnvPersistTestUid"
+}

@@ -1,0 +1,27 @@
+meta {
+  name: delete-global-env-var
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/users
+  body: none
+  auth: none
+}
+
+script:post-response {
+  bru.deleteGlobalEnvVar("toBeDeleted");
+}
+
+tests {
+  test("should have deleted global env var", function() {
+    const val = bru.getGlobalEnvVar("toBeDeleted");
+    expect(val).to.be.undefined;
+  });
+
+  test("should still have baseUrl", function() {
+    const val = bru.getGlobalEnvVar("baseUrl");
+    expect(val).to.equal("https://echo.usebruno.com");
+  });
+}
