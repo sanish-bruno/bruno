@@ -555,7 +555,6 @@ const registerNetworkIpc = (mainWindow) => {
       mainWindow.webContents.send('main:script-environment-update', {
         envVariables: scriptResult.envVariables,
         runtimeVariables: scriptResult.runtimeVariables,
-        collectionVariables: scriptResult.collectionVariables,
         requestUid,
         collectionUid
       });
@@ -665,7 +664,6 @@ const registerNetworkIpc = (mainWindow) => {
         mainWindow.webContents.send('main:script-environment-update', {
           envVariables: result.envVariables,
           runtimeVariables: result.runtimeVariables,
-          collectionVariables: result.collectionVariables,
           requestUid,
           collectionUid
         });
@@ -710,7 +708,6 @@ const registerNetworkIpc = (mainWindow) => {
       mainWindow.webContents.send('main:script-environment-update', {
         envVariables: scriptResult.envVariables,
         runtimeVariables: scriptResult.runtimeVariables,
-        collectionVariables: scriptResult.collectionVariables,
         requestUid,
         collectionUid
       });
@@ -1210,7 +1207,6 @@ const registerNetworkIpc = (mainWindow) => {
           mainWindow.webContents.send('main:script-environment-update', {
             envVariables: testResults.envVariables,
             runtimeVariables: testResults.runtimeVariables,
-            collectionVariables: testResults.collectionVariables,
             requestUid,
             collectionUid
           });
@@ -2066,7 +2062,6 @@ const registerNetworkIpc = (mainWindow) => {
               mainWindow.webContents.send('main:script-environment-update', {
                 envVariables: testResults.envVariables,
                 runtimeVariables: testResults.runtimeVariables,
-                collectionVariables: testResults.collectionVariables,
                 collectionUid
               });
 
