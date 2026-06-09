@@ -10,9 +10,6 @@ get {
   auth: none
 }
 
-script:pre-request {
-}
-
 script:post-response {
   bru.setCollectionVar("testSetCollectionVar", "collection-test-value")
 }

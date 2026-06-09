@@ -206,7 +206,7 @@ describe('runtime', () => {
 
       const result = await runtime.runRequestScript(script, {}, {}, {}, '.', null, process.env);
 
-      expect(result.persistentEnvVariables).toBeUndefined();
+      expect(result).not.toHaveProperty('persistentEnvVariables');
     });
 
     it('should include collectionVariables in result', async () => {

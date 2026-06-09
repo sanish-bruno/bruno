@@ -24,8 +24,7 @@ test.describe('Global environment variable persistence via script', () => {
 
     await test.step('Verify "baseUrl" still exists with original value', async () => {
       await expect(locators.environment.variableRowByName('baseUrl')).toBeVisible();
-      const value = await locators.environment.variableValue('baseUrl').textContent();
-      expect(value).toContain('https://testbench-sanity.usebruno.com');
+      await expect(locators.environment.variableValue('baseUrl')).toContainText('https://testbench-sanity.usebruno.com');
     });
 
     await test.step('Close global environment config', async () => {
@@ -51,14 +50,12 @@ test.describe('Global environment variable persistence via script', () => {
 
     await test.step('Verify "newGlobalVar" is added with correct value', async () => {
       await expect(locators.environment.variableRowByName('newGlobalVar')).toBeVisible();
-      const value = await locators.environment.variableValue('newGlobalVar').textContent();
-      expect(value).toContain('new-global-value');
+      await expect(locators.environment.variableValue('newGlobalVar')).toContainText('new-global-value');
     });
 
     await test.step('Verify "baseUrl" still exists with original value', async () => {
       await expect(locators.environment.variableRowByName('baseUrl')).toBeVisible();
-      const value = await locators.environment.variableValue('baseUrl').textContent();
-      expect(value).toContain('https://testbench-sanity.usebruno.com');
+      await expect(locators.environment.variableValue('baseUrl')).toContainText('https://testbench-sanity.usebruno.com');
     });
 
     await test.step('Close global environment config', async () => {

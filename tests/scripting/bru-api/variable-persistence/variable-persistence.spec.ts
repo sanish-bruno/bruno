@@ -27,8 +27,7 @@ test.describe('Script variable persistence to disk (developer mode)', () => {
       await expect(locators.environment.collectionEnvTab()).toBeVisible();
 
       await expect(locators.environment.variableRowByName('persistedToken')).toBeVisible();
-      const value = await locators.environment.variableValue('persistedToken').textContent();
-      expect(value).toContain('test-value-123');
+      await expect(locators.environment.variableValue('persistedToken')).toContainText('test-value-123');
 
       await locators.environment.collectionEnvTab().hover();
       await locators.environment.collectionEnvTab().getByTestId('request-tab-close-icon').click({ force: true });
@@ -36,14 +35,18 @@ test.describe('Script variable persistence to disk (developer mode)', () => {
 
     await test.step('Verify env var persisted to environments/Test.bru', async () => {
       const envFilePath = path.join(collectionFixturePath!, 'variable-persistence-test', 'environments', 'Test.bru');
-      await expect.poll(() => fs.readFileSync(envFilePath, 'utf8'), { timeout: PERSISTENCE_TIMEOUT }).toContain('persistedToken');
-      expect(fs.readFileSync(envFilePath, 'utf8')).toContain('test-value-123');
+      await expect.poll(() => {
+        const content = fs.readFileSync(envFilePath, 'utf8');
+        return content.includes('persistedToken') && content.includes('test-value-123');
+      }, { timeout: PERSISTENCE_TIMEOUT }).toBe(true);
     });
 
     await test.step('Verify collection var persisted to collection.bru', async () => {
       const collectionBruPath = path.join(collectionFixturePath!, 'variable-persistence-test', 'collection.bru');
-      await expect.poll(() => fs.readFileSync(collectionBruPath, 'utf8'), { timeout: PERSISTENCE_TIMEOUT }).toContain('persistedCollectionToken');
-      expect(fs.readFileSync(collectionBruPath, 'utf8')).toContain('collection-value-456');
+      await expect.poll(() => {
+        const content = fs.readFileSync(collectionBruPath, 'utf8');
+        return content.includes('persistedCollectionToken') && content.includes('collection-value-456');
+      }, { timeout: PERSISTENCE_TIMEOUT }).toBe(true);
     });
   });
 });
