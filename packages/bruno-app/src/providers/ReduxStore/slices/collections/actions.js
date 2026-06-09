@@ -2303,7 +2303,8 @@ export const collectionVariablesUpdateEvent = ({ collectionVariables, collection
 
   dispatch(setCollectionVars({ collectionUid, type: 'request', vars }));
 
-  // Save to disk silently, then clear the draft (script-driven save, not a user action)
+  // Save to disk silently, then clear the draft (script-driven save, not a user action).
+  // getState() reads post-dispatch state — Redux Toolkit dispatches are synchronous.
   const collectionCopy = cloneDeep(findCollectionByUid(getState().collections.collections, collectionUid));
   if (collectionCopy) {
     const collectionRootToSave = transformCollectionRootToSave(collectionCopy);
