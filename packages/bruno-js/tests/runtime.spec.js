@@ -208,6 +208,28 @@ describe('runtime', () => {
 
       expect(result.persistentEnvVariables).toBeUndefined();
     });
+
+    it('should include collectionVariables in result', async () => {
+      const script = `bru.setCollectionVar('myVar', 'myValue');`;
+      const runtime = new ScriptRuntime({ runtime: 'nodevm' });
+
+      const result = await runtime.runRequestScript(script, {}, {}, {}, '.', null, process.env);
+
+      expect(result.collectionVariables).toBeDefined();
+      expect(result.collectionVariables.myVar).toBe('myValue');
+    });
+
+    it('should silently ignore old persist flag as extra argument', async () => {
+      const scriptTrue = `bru.setEnvVar('key1', 'val1', { persist: true });`;
+      const scriptFalse = `bru.setEnvVar('key2', 'val2', { persist: false });`;
+      const runtime = new ScriptRuntime({ runtime: 'nodevm' });
+
+      const result1 = await runtime.runRequestScript(scriptTrue, {}, {}, {}, '.', null, process.env);
+      expect(result1.envVariables.key1).toBe('val1');
+
+      const result2 = await runtime.runRequestScript(scriptFalse, {}, {}, {}, '.', null, process.env);
+      expect(result2.envVariables.key2).toBe('val2');
+    });
   });
 
   describe('bru.setVar random variable', () => {
