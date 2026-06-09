@@ -1,19 +1,19 @@
 {
   "environments": [
     {
-      "uid": "globalEnvPersistTestUid",
+      "uid": "RrPsTcwRnHMv3yljQO3ex",
       "name": "global",
       "variables": [
         {
-          "uid": "baseUrlUid",
+          "uid": "VXKOZdkYw0DyI4mlhn6Wr",
           "name": "baseUrl",
-          "value": "https://echo.usebruno.com",
+          "value": "https://testbench-sanity.usebruno.com",
           "type": "text",
           "secret": false,
           "enabled": true
         },
         {
-          "uid": "toBeDeletedUid",
+          "uid": "NTwrSscXsaeh4uee6ocJN",
           "name": "toBeDeleted",
           "value": "this-should-be-removed",
           "type": "text",
@@ -23,5 +23,5 @@
       ]
     }
   ],
-  "activeGlobalEnvironmentUid": "globalEnvPersistTestUid"
+  "activeGlobalEnvironmentUid": "RrPsTcwRnHMv3yljQO3ex"
 }

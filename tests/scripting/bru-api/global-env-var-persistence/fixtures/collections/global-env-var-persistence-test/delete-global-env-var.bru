@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/users
+  url: {{baseUrl}}/ping
   body: none
   auth: none
 }
@@ -18,10 +18,5 @@ tests {
   test("should have deleted global env var", function() {
     const val = bru.getGlobalEnvVar("toBeDeleted");
     expect(val).to.be.undefined;
-  });
-
-  test("should still have baseUrl", function() {
-    const val = bru.getGlobalEnvVar("baseUrl");
-    expect(val).to.equal("https://echo.usebruno.com");
   });
 }

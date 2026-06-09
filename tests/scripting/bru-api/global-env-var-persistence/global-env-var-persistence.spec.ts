@@ -22,9 +22,10 @@ test.describe('Global environment variable persistence via script', () => {
       await expect(locators.environment.variableRowByName('toBeDeleted')).not.toBeVisible();
     });
 
-    await test.step('Verify "baseUrl" is unchanged', async () => {
+    await test.step('Verify "baseUrl" still exists with original value', async () => {
+      await expect(locators.environment.variableRowByName('baseUrl')).toBeVisible();
       const value = await locators.environment.variableValue('baseUrl').textContent();
-      expect(value).toContain('https://echo.usebruno.com');
+      expect(value).toContain('https://testbench-sanity.usebruno.com');
     });
 
     await test.step('Close global environment config', async () => {
