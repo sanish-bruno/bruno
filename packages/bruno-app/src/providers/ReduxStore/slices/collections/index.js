@@ -1,5 +1,6 @@
 import { parseQueryParams, buildQueryString as stringifyQueryParams } from '@usebruno/common/utils';
 import { uuid } from 'utils/common';
+import { mergeScriptVarsIntoSaved, mergeScriptVarsIntoDraft } from 'utils/environments';
 import { find, map, forOwn, concat, filter, each, cloneDeep, get, set, findIndex } from 'lodash';
 import { createSlice } from '@reduxjs/toolkit';
 import { hexy as hexdump } from 'hexy';
@@ -393,58 +394,18 @@ export const collectionsSlice = createSlice({
         const activeEnvironment = findEnvironmentInCollection(collection, collection.activeEnvironmentUid);
 
         if (activeEnvironment) {
-          const scriptVarNames = new Set(Object.keys(envVariables));
-
-          // Update existing vars and add new ones from the script
-          forOwn(envVariables, (value, key) => {
-            if (key === '__name__') return;
-            const variable = find(activeEnvironment.variables, (v) => v.name === key);
-            if (variable) {
-              variable.value = value;
-            } else {
-              activeEnvironment.variables.push({
-                name: key,
-                value,
-                secret: false,
-                enabled: true,
-                type: 'text',
-                uid: uuid()
-              });
-            }
-          });
-
-          // Remove enabled vars that were deleted by the script; keep disabled vars untouched
-          activeEnvironment.variables = activeEnvironment.variables.filter((v) =>
-            !v.enabled || scriptVarNames.has(v.name)
+          const preMutationVarNames = new Set(
+            (activeEnvironment.variables || []).map((v) => v.name)
           );
 
-          // Sync script changes into the environment draft if one exists,
-          // so user's unsaved edits won't overwrite script-persisted vars on save
+          activeEnvironment.variables = mergeScriptVarsIntoSaved(
+            activeEnvironment.variables, envVariables
+          );
+
           if (collection.environmentsDraft?.environmentUid === activeEnvironment.uid) {
-            let draftVars = collection.environmentsDraft.variables || [];
-
-            forOwn(envVariables, (value, key) => {
-              if (key === '__name__') return;
-              const draftVar = find(draftVars, (v) => v.name === key);
-              if (draftVar) {
-                draftVar.value = value;
-              } else {
-                draftVars.push({
-                  name: key,
-                  value,
-                  secret: false,
-                  enabled: true,
-                  type: 'text',
-                  uid: uuid()
-                });
-              }
-            });
-
-            draftVars = draftVars.filter((v) =>
-              !v.enabled || scriptVarNames.has(v.name)
+            collection.environmentsDraft.variables = mergeScriptVarsIntoDraft(
+              collection.environmentsDraft.variables, envVariables, preMutationVarNames
             );
-
-            collection.environmentsDraft.variables = draftVars;
           }
         }
 

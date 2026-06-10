@@ -168,7 +168,9 @@ const EnvironmentVariablesTable = ({
   }, [collection, globalEnvironmentVariables, workspaceProcessEnvVariables]);
 
   const initialValues = useMemo(() => {
-    const vars = environment.variables || [];
+    // When a draft exists, use draft variables as initial values so formik's
+    // enableReinitialize preserves unsaved user edits instead of overwriting them
+    const vars = (hasDraftForThisEnv && draft?.variables) ? draft.variables : (environment.variables || []);
     return [
       ...vars,
       {
@@ -180,7 +182,7 @@ const EnvironmentVariablesTable = ({
         enabled: true
       }
     ];
-  }, [environment.uid, environment.variables]);
+  }, [environment.uid, environment.variables, hasDraftForThisEnv, draft?.variables]);
 
   const formik = useFormik({
     enableReinitialize: true,
@@ -286,7 +288,13 @@ const EnvironmentVariablesTable = ({
           onDraftChange(currentValues);
         }
       } else if (hasDraftForThisEnv) {
-        onDraftClear();
+        // Only clear the draft if the draft itself matches the saved values.
+        // If the draft has unsaved changes (e.g., from user edits) that formik lost
+        // due to enableReinitialize, don't clear — the draft is the source of truth.
+        const draftMatchesSaved = existingDraftJson === savedValuesJson;
+        if (draftMatchesSaved) {
+          onDraftClear();
+        }
       }
     }, 300);
 

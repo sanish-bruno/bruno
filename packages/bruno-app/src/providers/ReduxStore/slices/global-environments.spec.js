@@ -166,6 +166,48 @@ describe('globalEnvironmentsUpdateEvent', () => {
       expect(draftVars[0].name).toBe('baseUrl');
     });
 
+    test('preserves draft-only variables not in the script result', () => {
+      const state = makeState({
+        vars: [{ name: 'baseUrl', value: 'localhost' }],
+        draftVars: [{ name: 'baseUrl', value: 'localhost' }, { name: 'userDraftVar', value: 'draft-only' }]
+      });
+      const store = createMockStore(state);
+
+      // Script only knows about baseUrl and adds scriptVar — doesn't know about userDraftVar
+      globalEnvironmentsUpdateEvent({
+        globalEnvironmentVariables: { baseUrl: 'localhost', scriptVar: 'script-val' }
+      })(store.dispatch, store.getState);
+
+      const draftAction = store.dispatched.find((a) => a.type === setGlobalEnvironmentDraft.type);
+      const draftVars = draftAction.payload.variables;
+      // All three should be in the draft
+      expect(draftVars.find((v) => v.name === 'baseUrl')).toBeTruthy();
+      expect(draftVars.find((v) => v.name === 'userDraftVar').value).toBe('draft-only');
+      expect(draftVars.find((v) => v.name === 'scriptVar').value).toBe('script-val');
+    });
+
+    test('does not re-add variable that user deleted from draft', () => {
+      // User deleted "baseUrl" from draft (it exists in saved env but not in draft)
+      const state = makeState({
+        vars: [{ name: 'baseUrl', value: 'localhost' }],
+        draftVars: [{ name: 'userDraftVar', value: 'draft-only' }]
+      });
+      const store = createMockStore(state);
+
+      globalEnvironmentsUpdateEvent({
+        globalEnvironmentVariables: { baseUrl: 'localhost', scriptVar: 'new-from-script' }
+      })(store.dispatch, store.getState);
+
+      const draftAction = store.dispatched.find((a) => a.type === setGlobalEnvironmentDraft.type);
+      const draftVars = draftAction.payload.variables;
+      // baseUrl should NOT be re-added (user deleted it from draft)
+      expect(draftVars.find((v) => v.name === 'baseUrl')).toBeUndefined();
+      // userDraftVar should be preserved (draft-only)
+      expect(draftVars.find((v) => v.name === 'userDraftVar')).toBeTruthy();
+      // scriptVar should be added (new from script, not in saved env)
+      expect(draftVars.find((v) => v.name === 'scriptVar').value).toBe('new-from-script');
+    });
+
     test('does not dispatch draft update when no draft exists', () => {
       const state = makeState({ vars: [{ name: 'baseUrl', value: 'localhost' }] });
       const store = createMockStore(state);

@@ -84,7 +84,7 @@ import {
   mergeHeaders
 } from 'utils/collections/index';
 import { sanitizeName } from 'utils/common/regex';
-import { buildPersistedEnvVariables } from 'utils/environments';
+import { buildPersistedEnvVariables, mergeScriptVarsIntoSaved } from 'utils/environments';
 import { safeParseJSON, safeStringifyJSON } from 'utils/common/index';
 import { resolveInheritedAuth } from 'utils/auth';
 import { addTab } from 'providers/ReduxStore/slices/tabs';
@@ -2281,24 +2281,10 @@ export const collectionVariablesUpdateEvent = ({ collectionVariables, collection
 
   // Compute updated vars from the committed root (not draft — draft may have unrelated unsaved user edits)
   const root = collection.root || {};
-  let vars = cloneDeep(get(root, 'request.vars.req', []));
-  const scriptVarNames = new Set(Object.keys(collectionVariables));
-
-  Object.entries(collectionVariables).forEach(([name, value]) => {
-    const existing = vars.find((v) => v.name === name);
-    if (existing) {
-      existing.value = String(value);
-    } else {
-      vars.push({
-        uid: uuid(),
-        name,
-        value: String(value),
-        enabled: true
-      });
-    }
+  const vars = mergeScriptVarsIntoSaved(get(root, 'request.vars.req', []), collectionVariables, {
+    coerceValue: String,
+    makeVar: (name, value) => ({ uid: uuid(), name, value, enabled: true })
   });
-
-  vars = vars.filter((v) => !v.enabled || scriptVarNames.has(v.name));
 
   // Update collection.root.request.vars.req directly via a targeted reducer
   dispatch(setCollectionVars({ collectionUid, type: 'request', vars }));

@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { uuid } from 'utils/common/index';
 import { environmentSchema } from '@usebruno/schema';
-import { cloneDeep, has } from 'lodash';
+import { mergeScriptVarsIntoSaved, mergeScriptVarsIntoDraft } from 'utils/environments';
 
 const initialState = {
   globalEnvironments: [],
@@ -274,61 +274,18 @@ export const globalEnvironmentsUpdateEvent = ({ globalEnvironmentVariables }) =>
 
   if (!environment || !environmentUid) return;
 
-  let variables = cloneDeep(environment?.variables);
-  const scriptVarNames = new Set(Object.keys(globalEnvironmentVariables));
-
-  // Update the value of each variable if it's present in "globalEnvironmentVariables"
-  variables = variables?.map?.((variable) => ({
-    ...variable,
-    value: has(globalEnvironmentVariables, variable?.name)
-      ? globalEnvironmentVariables[variable?.name]
-      : variable?.value
-  }));
-
-  // Add new variables created by the script
-  Object.entries(globalEnvironmentVariables)?.forEach?.(([key, value]) => {
-    const isAnExistingVariable = variables?.find((v) => v?.name == key);
-    if (!isAnExistingVariable) {
-      variables.push({
-        uid: uuid(),
-        name: key,
-        value,
-        type: 'text',
-        secret: false,
-        enabled: true
-      });
-    }
-  });
-
-  // Remove enabled vars deleted by the script; keep disabled vars
-  variables = variables.filter((v) => !v.enabled || scriptVarNames.has(v.name));
+  const preMutationVarNames = new Set((environment?.variables || []).map((v) => v.name));
+  const variables = mergeScriptVarsIntoSaved(environment.variables, globalEnvironmentVariables);
 
   // Update Redux state
   dispatch(_saveGlobalEnvironment({ environmentUid, variables }));
 
-  // Sync script changes into the global environment draft if one exists,
-  // so user's unsaved edits won't overwrite script-persisted vars on save
+  // Sync script changes into the global environment draft if one exists
   const globalEnvDraft = state?.globalEnvironments?.globalEnvironmentDraft;
   if (globalEnvDraft?.environmentUid === environmentUid) {
-    let draftVars = cloneDeep(globalEnvDraft.variables || []);
-
-    Object.entries(globalEnvironmentVariables).forEach(([key, value]) => {
-      const draftVar = draftVars.find((v) => v.name === key);
-      if (draftVar) {
-        draftVar.value = value;
-      } else {
-        draftVars.push({
-          uid: uuid(),
-          name: key,
-          value,
-          type: 'text',
-          secret: false,
-          enabled: true
-        });
-      }
-    });
-
-    draftVars = draftVars.filter((v) => !v.enabled || scriptVarNames.has(v.name));
+    const draftVars = mergeScriptVarsIntoDraft(
+      globalEnvDraft.variables, globalEnvironmentVariables, preMutationVarNames
+    );
 
     dispatch(setGlobalEnvironmentDraft({ environmentUid, variables: draftVars }));
   }

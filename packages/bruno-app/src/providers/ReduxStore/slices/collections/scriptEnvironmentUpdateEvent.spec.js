@@ -129,6 +129,28 @@ describe('scriptEnvironmentUpdateEvent', () => {
       expect(getDraft(result).variables.find((v) => v.name === 'host').value).toBe('updated-host');
     });
 
+    test('preserves draft-only variables not in the script result', () => {
+      const draft = {
+        environmentUid: 'env-1',
+        variables: [
+          { uid: 'uid-host', name: 'host', value: 'localhost', type: 'text', enabled: true, secret: false },
+          { uid: 'uid-userDraft', name: 'userDraftVar', value: 'draft-only', type: 'text', enabled: true, secret: false }
+        ]
+      };
+      // userDraftVar is only in the draft, not in the saved environment
+      const state = makeState({ envVars: [{ name: 'host', value: 'localhost' }], draft });
+      const action = scriptEnvironmentUpdateEvent({
+        collectionUid: 'col-1',
+        envVariables: { __name__: 'Test', host: 'localhost', scriptVar: 'script-value' },
+        runtimeVariables: {}
+      });
+      const result = reducer(state, action);
+      const draftVars = getDraft(result).variables;
+      expect(draftVars.find((v) => v.name === 'host')).toBeTruthy();
+      expect(draftVars.find((v) => v.name === 'userDraftVar').value).toBe('draft-only');
+      expect(draftVars.find((v) => v.name === 'scriptVar').value).toBe('script-value');
+    });
+
     test('removes script-deleted variable from draft', () => {
       const draft = {
         environmentUid: 'env-1',
@@ -147,6 +169,30 @@ describe('scriptEnvironmentUpdateEvent', () => {
       const draftVars = getDraft(result).variables;
       expect(draftVars).toHaveLength(1);
       expect(draftVars[0].name).toBe('host');
+    });
+
+    test('does not re-add variable that user deleted from draft', () => {
+      // User deleted "host" from the draft (it exists in saved env but not in draft)
+      const draft = {
+        environmentUid: 'env-1',
+        variables: [
+          { uid: 'uid-userDraft', name: 'userDraftVar', value: 'draft-only', type: 'text', enabled: true, secret: false }
+        ]
+      };
+      const state = makeState({ envVars: [{ name: 'host', value: 'localhost' }], draft });
+      const action = scriptEnvironmentUpdateEvent({
+        collectionUid: 'col-1',
+        envVariables: { __name__: 'Test', host: 'localhost', scriptVar: 'new-from-script' },
+        runtimeVariables: {}
+      });
+      const result = reducer(state, action);
+      const draftVars = getDraft(result).variables;
+      // host should NOT be re-added (user deleted it from draft)
+      expect(draftVars.find((v) => v.name === 'host')).toBeUndefined();
+      // userDraftVar should be preserved (draft-only)
+      expect(draftVars.find((v) => v.name === 'userDraftVar')).toBeTruthy();
+      // scriptVar should be added (new from script, not in saved env)
+      expect(draftVars.find((v) => v.name === 'scriptVar').value).toBe('new-from-script');
     });
 
     test('does not create draft when none exists', () => {
