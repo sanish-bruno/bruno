@@ -1,0 +1,22 @@
+meta {
+  name: set-env-var
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{host}}/ping
+  body: none
+  auth: none
+}
+
+script:post-response {
+  bru.setEnvVar("scriptToken", "script-value-123");
+}
+
+tests {
+  test("should set env var", function() {
+    const val = bru.getEnvVar("scriptToken");
+    expect(val).to.equal("script-value-123");
+  });
+}

@@ -111,6 +111,7 @@ const SpecialTab = ({ handleCloseClick, type, tabName, handleDoubleClick, hasDra
     <>
       <div
         className="flex items-center tab-label"
+        data-testid={`special-tab-${type}`}
         onDoubleClick={handleDoubleClick}
       >
         {getTabInfo(type, tabName)}

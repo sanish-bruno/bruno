@@ -76,8 +76,8 @@ export const buildCommonLocators = (page: Page) => ({
     variableValue: (name: string) => page.locator('tbody tr').filter({ has: page.locator(`input[value="${name}"]`) }).locator('.CodeMirror-line').first(),
     createEnvButton: () => page.locator('button[id="create-env"]'),
     envNameInput: () => page.locator('input[name="name"]'),
-    collectionEnvTab: () => page.locator('.request-tab').filter({ hasText: /^Environments$/ }),
-    globalEnvTab: () => page.locator('.request-tab').filter({ hasText: /^Global Environments$/ })
+    collectionEnvTab: () => page.locator('.request-tab').filter({ has: page.getByTestId('special-tab-environment-settings') }),
+    globalEnvTab: () => page.locator('.request-tab').filter({ has: page.getByTestId('special-tab-global-environment-settings') })
   },
   codeMirror: {
     byTestId: (testId: string) => page.getByTestId(testId).locator('.CodeMirror').first()

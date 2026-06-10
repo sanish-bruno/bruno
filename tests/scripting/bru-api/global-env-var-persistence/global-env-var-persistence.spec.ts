@@ -1,8 +1,12 @@
 import { test, expect } from '../../../../playwright';
-import { openCollection, sendRequest, openEnvironmentSelector } from '../../../utils/page';
+import { openCollection, sendRequest, openEnvironmentSelector, closeAllTabs, closeAllCollections } from '../../../utils/page';
 import { buildCommonLocators } from '../../../utils/page/locators';
 
 test.describe('Global environment variable persistence via script', () => {
+  test.afterEach(async ({ pageWithUserData: page }) => {
+    await closeAllTabs(page);
+  });
+
   test('bru.deleteGlobalEnvVar() removes variable from global environment', async ({
     pageWithUserData: page
   }) => {

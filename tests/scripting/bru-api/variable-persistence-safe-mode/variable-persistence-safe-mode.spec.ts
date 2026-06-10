@@ -1,13 +1,17 @@
 import { test, expect } from '../../../../playwright';
 import fs from 'fs';
 import path from 'path';
-import { openCollection, selectEnvironment, openEnvironmentSelector } from '../../../utils/page';
+import { openCollection, selectEnvironment, openEnvironmentSelector, closeAllTabs } from '../../../utils/page';
 import { buildCommonLocators } from '../../../utils/page/locators';
 import { runCollection, validateRunnerResults } from '../../../utils/page/runner';
 
 const PERSISTENCE_TIMEOUT = 10000;
 
 test.describe('Script variable persistence to disk (safe mode)', () => {
+  test.afterEach(async ({ pageWithUserData: page }) => {
+    await closeAllTabs(page);
+  });
+
   test('persists env var and collection var in safe mode', async ({ pageWithUserData: page, collectionFixturePath }) => {
     const locators = buildCommonLocators(page);
 
