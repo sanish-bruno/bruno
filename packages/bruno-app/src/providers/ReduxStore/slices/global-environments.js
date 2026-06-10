@@ -306,6 +306,33 @@ export const globalEnvironmentsUpdateEvent = ({ globalEnvironmentVariables }) =>
   // Update Redux state
   dispatch(_saveGlobalEnvironment({ environmentUid, variables }));
 
+  // Sync script changes into the global environment draft if one exists,
+  // so user's unsaved edits won't overwrite script-persisted vars on save
+  const globalEnvDraft = state?.globalEnvironments?.globalEnvironmentDraft;
+  if (globalEnvDraft?.environmentUid === environmentUid) {
+    let draftVars = cloneDeep(globalEnvDraft.variables || []);
+
+    Object.entries(globalEnvironmentVariables).forEach(([key, value]) => {
+      const draftVar = draftVars.find((v) => v.name === key);
+      if (draftVar) {
+        draftVar.value = value;
+      } else {
+        draftVars.push({
+          uid: uuid(),
+          name: key,
+          value,
+          type: 'text',
+          secret: false,
+          enabled: true
+        });
+      }
+    });
+
+    draftVars = draftVars.filter((v) => !v.enabled || scriptVarNames.has(v.name));
+
+    dispatch(setGlobalEnvironmentDraft({ environmentUid, variables: draftVars }));
+  }
+
   // Persist to disk using the computed variables directly
   // (not from getState(), which may not reflect the dispatch above yet)
   const { ipcRenderer } = window;

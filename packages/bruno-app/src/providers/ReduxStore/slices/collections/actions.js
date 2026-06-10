@@ -2279,11 +2279,11 @@ export const collectionVariablesUpdateEvent = ({ collectionVariables, collection
   const collection = findCollectionByUid(state.collections.collections, collectionUid);
   if (!collection) return;
 
-  const root = collection.draft?.root || collection.root || {};
+  // Compute updated vars from the committed root (not draft — draft may have unrelated unsaved user edits)
+  const root = collection.root || {};
   let vars = cloneDeep(get(root, 'request.vars.req', []));
   const scriptVarNames = new Set(Object.keys(collectionVariables));
 
-  // Update existing vars, add new ones
   Object.entries(collectionVariables).forEach(([name, value]) => {
     const existing = vars.find((v) => v.name === name);
     if (existing) {
@@ -2298,19 +2298,29 @@ export const collectionVariablesUpdateEvent = ({ collectionVariables, collection
     }
   });
 
-  // Remove enabled vars deleted by the script; keep disabled vars
   vars = vars.filter((v) => !v.enabled || scriptVarNames.has(v.name));
 
+  // Update collection.root.request.vars.req directly via a targeted reducer
   dispatch(setCollectionVars({ collectionUid, type: 'request', vars }));
 
-  // Save to disk silently, then clear the draft (script-driven save, not a user action).
-  // getState() reads post-dispatch state — Redux Toolkit dispatches are synchronous.
-  const collectionCopy = cloneDeep(findCollectionByUid(getState().collections.collections, collectionUid));
-  if (collectionCopy) {
-    const collectionRootToSave = transformCollectionRootToSave(collectionCopy);
+  // setCollectionVars above updates draft.root.request.vars.req (if a draft exists),
+  // keeping the user's draft in sync with script changes.
+
+  // Save only the committed root (with updated vars) to disk.
+  // Temporarily strip the draft so transformCollectionRootToSave reads from root,
+  // avoiding persisting unrelated unsaved user edits (scripts, headers, etc.).
+  const updatedCollection = cloneDeep(findCollectionByUid(getState().collections.collections, collectionUid));
+  if (updatedCollection) {
+    // Apply updated vars to the committed root
+    set(updatedCollection, 'root.request.vars.req', vars);
+    // Strip draft so transformCollectionRootToSave reads from root only
+    const savedDraft = updatedCollection.draft;
+    updatedCollection.draft = null;
+    const collectionRootToSave = transformCollectionRootToSave(updatedCollection);
+    updatedCollection.draft = savedDraft;
+
     const { ipcRenderer } = window;
-    ipcRenderer.invoke('renderer:save-collection-root', collectionCopy.pathname, collectionRootToSave, collectionCopy.brunoConfig)
-      .then(() => dispatch(saveCollectionDraft({ collectionUid })))
+    ipcRenderer.invoke('renderer:save-collection-root', updatedCollection.pathname, collectionRootToSave, updatedCollection.brunoConfig)
       .catch((err) => console.error('Failed to persist collection variables:', err));
   }
 };

@@ -417,6 +417,35 @@ export const collectionsSlice = createSlice({
           activeEnvironment.variables = activeEnvironment.variables.filter((v) =>
             !v.enabled || scriptVarNames.has(v.name)
           );
+
+          // Sync script changes into the environment draft if one exists,
+          // so user's unsaved edits won't overwrite script-persisted vars on save
+          if (collection.environmentsDraft?.environmentUid === activeEnvironment.uid) {
+            let draftVars = collection.environmentsDraft.variables || [];
+
+            forOwn(envVariables, (value, key) => {
+              if (key === '__name__') return;
+              const draftVar = find(draftVars, (v) => v.name === key);
+              if (draftVar) {
+                draftVar.value = value;
+              } else {
+                draftVars.push({
+                  name: key,
+                  value,
+                  secret: false,
+                  enabled: true,
+                  type: 'text',
+                  uid: uuid()
+                });
+              }
+            });
+
+            draftVars = draftVars.filter((v) =>
+              !v.enabled || scriptVarNames.has(v.name)
+            );
+
+            collection.environmentsDraft.variables = draftVars;
+          }
         }
 
         collection.runtimeVariables = runtimeVariables;
