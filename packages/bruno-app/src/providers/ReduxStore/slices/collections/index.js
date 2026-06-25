@@ -1924,6 +1924,22 @@ export const collectionsSlice = createSlice({
         }
       }
     },
+    updateScript: (state, action) => {
+      const { collectionUid, itemUid, script, field = 'req' } = action.payload;
+      const collection = findCollectionByUid(state.collections, collectionUid);
+
+      if (collection) {
+        const item = findItemInCollection(collection, itemUid);
+
+        if (item && isItemARequest(item)) {
+          if (!item.draft) {
+            item.draft = cloneDeep(item);
+          }
+          item.draft.request.script = item.draft.request.script || {};
+          item.draft.request.script[field] = script;
+        }
+      }
+    },
     updateResponseScript: (state, action) => {
       const collection = findCollectionByUid(state.collections, action.payload.collectionUid);
 
@@ -3169,9 +3185,11 @@ export const collectionsSlice = createSlice({
       item.postResponseTestResults = [];
       item.assertionResults = [];
       item.preRequestScriptErrorMessage = null;
+      item.onMessageScriptErrorMessage = null;
       item.postResponseScriptErrorMessage = null;
       item.testScriptErrorMessage = null;
       item.preRequestScriptErrorContext = null;
+      item.onMessageScriptErrorContext = null;
       item.postResponseScriptErrorContext = null;
       item.testScriptErrorContext = null;
     },
@@ -3188,6 +3206,11 @@ export const collectionsSlice = createSlice({
           if (type === 'pre-request-script-execution') {
             item.preRequestScriptErrorMessage = action.payload.errorMessage;
             item.preRequestScriptErrorContext = action.payload.errorContext || null;
+          }
+
+          if (type === 'on-message-script-execution') {
+            item.onMessageScriptErrorMessage = action.payload.errorMessage;
+            item.onMessageScriptErrorContext = action.payload.errorContext || null;
           }
 
           if (type === 'post-response-script-execution') {
@@ -4040,6 +4063,7 @@ export const {
   updateRequestGraphqlVariables,
   updateRequestScript,
   updateResponseScript,
+  updateScript,
   updateRequestTests,
   updateRequestMethod,
   updateRequestProtoPath,
