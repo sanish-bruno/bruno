@@ -1,4 +1,5 @@
 import { sanitizeUrl, transformUrl, brunoToPostman } from '../../src/postman/bruno-to-postman';
+import postmanToBruno from '../../src/postman/postman-to-bruno';
 
 describe('transformUrl', () => {
   it('should handle basic URL with path variables', () => {
@@ -487,7 +488,385 @@ describe('brunoToPostman null checks and fallbacks', () => {
           key: 'value',
           value: '',
           type: 'string'
+        },
+        {
+          key: 'in',
+          value: 'header',
+          type: 'string'
         }
+      ]
+    });
+  });
+});
+
+describe('brunoToPostman auth handling', () => {
+  const wrap = (auth) => ({
+    items: [
+      {
+        name: 'Test Request',
+        type: 'http-request',
+        request: { method: 'GET', url: 'https://example.com', auth }
+      }
+    ]
+  });
+
+  it('should export apikey placement=queryparams as in=query', () => {
+    const result = brunoToPostman(wrap({
+      mode: 'apikey',
+      apikey: { key: 'X-Api-Key', value: 'secret', placement: 'queryparams' }
+    }));
+    expect(result.item[0].request.auth).toEqual({
+      type: 'apikey',
+      apikey: [
+        { key: 'key', value: 'X-Api-Key', type: 'string' },
+        { key: 'value', value: 'secret', type: 'string' },
+        { key: 'in', value: 'query', type: 'string' }
+      ]
+    });
+  });
+
+  it('should export awsv4 auth with all fields', () => {
+    const result = brunoToPostman(wrap({
+      mode: 'awsv4',
+      awsv4: {
+        accessKeyId: 'AKIA',
+        secretAccessKey: 'shh',
+        sessionToken: 'sess',
+        service: 's3',
+        region: 'us-east-1',
+        profileName: ''
+      }
+    }));
+    expect(result.item[0].request.auth).toEqual({
+      type: 'awsv4',
+      awsv4: [
+        { key: 'accessKey', value: 'AKIA', type: 'string' },
+        { key: 'secretKey', value: 'shh', type: 'string' },
+        { key: 'sessionToken', value: 'sess', type: 'string' },
+        { key: 'service', value: 's3', type: 'string' },
+        { key: 'region', value: 'us-east-1', type: 'string' }
+      ]
+    });
+  });
+
+  it('should export awsv4 with empty fields when values missing', () => {
+    const result = brunoToPostman(wrap({ mode: 'awsv4', awsv4: {} }));
+    expect(result.item[0].request.auth.awsv4).toEqual([
+      { key: 'accessKey', value: '', type: 'string' },
+      { key: 'secretKey', value: '', type: 'string' },
+      { key: 'sessionToken', value: '', type: 'string' },
+      { key: 'service', value: '', type: 'string' },
+      { key: 'region', value: '', type: 'string' }
+    ]);
+  });
+
+  it('should export digest auth', () => {
+    const result = brunoToPostman(wrap({
+      mode: 'digest',
+      digest: { username: 'user', password: 'pass' }
+    }));
+    expect(result.item[0].request.auth).toEqual({
+      type: 'digest',
+      digest: [
+        { key: 'username', value: 'user', type: 'string' },
+        { key: 'password', value: 'pass', type: 'string' }
+      ]
+    });
+  });
+
+  it('should export ntlm auth with domain', () => {
+    const result = brunoToPostman(wrap({
+      mode: 'ntlm',
+      ntlm: { username: 'user', password: 'pass', domain: 'CORP' }
+    }));
+    expect(result.item[0].request.auth).toEqual({
+      type: 'ntlm',
+      ntlm: [
+        { key: 'username', value: 'user', type: 'string' },
+        { key: 'password', value: 'pass', type: 'string' },
+        { key: 'domain', value: 'CORP', type: 'string' }
+      ]
+    });
+  });
+
+  it('should export oauth1 with header placement', () => {
+    const result = brunoToPostman(wrap({
+      mode: 'oauth1',
+      oauth1: {
+        consumerKey: 'ck',
+        consumerSecret: 'cs',
+        accessToken: 'at',
+        accessTokenSecret: 'ats',
+        callbackUrl: 'https://cb.example',
+        verifier: 'v',
+        signatureMethod: 'HMAC-SHA256',
+        privateKey: null,
+        privateKeyType: 'text',
+        timestamp: '1700000000',
+        nonce: 'n1',
+        version: '1.0',
+        realm: 'r',
+        placement: 'header',
+        includeBodyHash: true
+      }
+    }));
+    expect(result.item[0].request.auth.type).toBe('oauth1');
+    expect(result.item[0].request.auth.oauth1).toEqual([
+      { key: 'consumerKey', value: 'ck', type: 'string' },
+      { key: 'consumerSecret', value: 'cs', type: 'string' },
+      { key: 'token', value: 'at', type: 'string' },
+      { key: 'tokenSecret', value: 'ats', type: 'string' },
+      { key: 'callback', value: 'https://cb.example', type: 'string' },
+      { key: 'verifier', value: 'v', type: 'string' },
+      { key: 'signatureMethod', value: 'HMAC-SHA256', type: 'string' },
+      { key: 'privateKey', value: '', type: 'string' },
+      { key: 'timestamp', value: '1700000000', type: 'string' },
+      { key: 'nonce', value: 'n1', type: 'string' },
+      { key: 'version', value: '1.0', type: 'string' },
+      { key: 'realm', value: 'r', type: 'string' },
+      { key: 'addParamsToHeader', value: true, type: 'boolean' },
+      { key: 'includeBodyHash', value: true, type: 'boolean' }
+    ]);
+  });
+
+  it('should invert oauth1 query placement to addParamsToHeader=false', () => {
+    const result = brunoToPostman(wrap({
+      mode: 'oauth1',
+      oauth1: { placement: 'query' }
+    }));
+    const addParams = result.item[0].request.auth.oauth1.find((p) => p.key === 'addParamsToHeader');
+    expect(addParams).toEqual({ key: 'addParamsToHeader', value: false, type: 'boolean' });
+  });
+
+  it('should export oauth2 client_credentials grant', () => {
+    const result = brunoToPostman(wrap({
+      mode: 'oauth2',
+      oauth2: {
+        grantType: 'client_credentials',
+        accessTokenUrl: 'https://token.example',
+        refreshTokenUrl: '',
+        clientId: 'cid',
+        clientSecret: 'csec',
+        scope: 'read',
+        state: '',
+        tokenPlacement: 'header',
+        tokenHeaderPrefix: 'Bearer',
+        credentialsPlacement: 'basic_auth_header'
+      }
+    }));
+    expect(result.item[0].request.auth.type).toBe('oauth2');
+    expect(result.item[0].request.auth.oauth2).toEqual([
+      { key: 'grant_type', value: 'client_credentials', type: 'string' },
+      { key: 'accessTokenUrl', value: 'https://token.example', type: 'string' },
+      { key: 'refreshTokenUrl', value: '', type: 'string' },
+      { key: 'clientId', value: 'cid', type: 'string' },
+      { key: 'clientSecret', value: 'csec', type: 'string' },
+      { key: 'scope', value: 'read', type: 'string' },
+      { key: 'state', value: '', type: 'string' },
+      { key: 'addTokenTo', value: 'header', type: 'string' },
+      { key: 'headerPrefix', value: 'Bearer', type: 'string' },
+      { key: 'client_authentication', value: 'basic_auth_header', type: 'string' }
+    ]);
+  });
+
+  it('should export oauth2 authorization_code with pkce=true as authorization_code_with_pkce', () => {
+    const result = brunoToPostman(wrap({
+      mode: 'oauth2',
+      oauth2: {
+        grantType: 'authorization_code',
+        pkce: true,
+        authorizationUrl: 'https://auth.example',
+        callbackUrl: 'https://cb.example',
+        accessTokenUrl: 'https://token.example',
+        clientId: 'cid',
+        clientSecret: 'csec',
+        credentialsPlacement: 'body',
+        tokenPlacement: 'url'
+      }
+    }));
+    const oauth2 = result.item[0].request.auth.oauth2;
+    expect(oauth2.find((p) => p.key === 'grant_type').value).toBe('authorization_code_with_pkce');
+    expect(oauth2.find((p) => p.key === 'authUrl').value).toBe('https://auth.example');
+    expect(oauth2.find((p) => p.key === 'redirect_uri').value).toBe('https://cb.example');
+    expect(oauth2.find((p) => p.key === 'addTokenTo').value).toBe('url');
+    expect(oauth2.find((p) => p.key === 'client_authentication').value).toBe('body');
+  });
+
+  it('should export oauth2 authorization_code without pkce as authorization_code', () => {
+    const result = brunoToPostman(wrap({
+      mode: 'oauth2',
+      oauth2: { grantType: 'authorization_code', pkce: false }
+    }));
+    const grant = result.item[0].request.auth.oauth2.find((p) => p.key === 'grant_type');
+    expect(grant.value).toBe('authorization_code');
+  });
+
+  it('should export oauth2 password grant as password_credentials', () => {
+    const result = brunoToPostman(wrap({
+      mode: 'oauth2',
+      oauth2: {
+        grantType: 'password',
+        username: 'u',
+        password: 'p'
+      }
+    }));
+    const oauth2 = result.item[0].request.auth.oauth2;
+    expect(oauth2.find((p) => p.key === 'grant_type').value).toBe('password_credentials');
+    expect(oauth2.find((p) => p.key === 'username').value).toBe('u');
+    expect(oauth2.find((p) => p.key === 'password').value).toBe('p');
+  });
+
+  it('should export oauth2 implicit grant with authUrl and redirect_uri', () => {
+    const result = brunoToPostman(wrap({
+      mode: 'oauth2',
+      oauth2: {
+        grantType: 'implicit',
+        authorizationUrl: 'https://auth.example',
+        callbackUrl: 'https://cb.example'
+      }
+    }));
+    const oauth2 = result.item[0].request.auth.oauth2;
+    expect(oauth2.find((p) => p.key === 'grant_type').value).toBe('implicit');
+    expect(oauth2.find((p) => p.key === 'authUrl').value).toBe('https://auth.example');
+    expect(oauth2.find((p) => p.key === 'redirect_uri').value).toBe('https://cb.example');
+  });
+
+  it('should fall back to noauth for unmapped modes (wsse, inherit)', () => {
+    expect(brunoToPostman(wrap({ mode: 'wsse', wsse: {} })).item[0].request.auth)
+      .toEqual({ type: 'noauth' });
+    expect(brunoToPostman(wrap({ mode: 'inherit' })).item[0].request.auth)
+      .toEqual({ type: 'noauth' });
+  });
+});
+
+describe('brunoToPostman auth round-trip (postman → bruno → postman)', () => {
+  const roundTrip = async (postmanAuth) => {
+    const postmanCollection = {
+      info: { name: 'Test', schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json' },
+      item: [
+        {
+          name: 'Req',
+          request: { method: 'GET', url: 'https://example.com', auth: postmanAuth }
+        }
+      ]
+    };
+    const { collection } = await postmanToBruno(postmanCollection);
+    const exported = brunoToPostman(collection);
+    return exported.item[0].request.auth;
+  };
+
+  it('round-trips awsv4 auth', async () => {
+    const result = await roundTrip({
+      type: 'awsv4',
+      awsv4: [
+        { key: 'accessKey', value: 'AKIA', type: 'string' },
+        { key: 'secretKey', value: 'shh', type: 'string' },
+        { key: 'sessionToken', value: 'sess', type: 'string' },
+        { key: 'service', value: 's3', type: 'string' },
+        { key: 'region', value: 'us-east-1', type: 'string' }
+      ]
+    });
+    expect(result.type).toBe('awsv4');
+    expect(result.awsv4).toEqual([
+      { key: 'accessKey', value: 'AKIA', type: 'string' },
+      { key: 'secretKey', value: 'shh', type: 'string' },
+      { key: 'sessionToken', value: 'sess', type: 'string' },
+      { key: 'service', value: 's3', type: 'string' },
+      { key: 'region', value: 'us-east-1', type: 'string' }
+    ]);
+  });
+
+  it('round-trips digest auth', async () => {
+    const result = await roundTrip({
+      type: 'digest',
+      digest: [
+        { key: 'username', value: 'user', type: 'string' },
+        { key: 'password', value: 'pass', type: 'string' }
+      ]
+    });
+    expect(result).toEqual({
+      type: 'digest',
+      digest: [
+        { key: 'username', value: 'user', type: 'string' },
+        { key: 'password', value: 'pass', type: 'string' }
+      ]
+    });
+  });
+
+  it('round-trips oauth1 with query placement', async () => {
+    const result = await roundTrip({
+      type: 'oauth1',
+      oauth1: [
+        { key: 'consumerKey', value: 'ck', type: 'string' },
+        { key: 'consumerSecret', value: 'cs', type: 'string' },
+        { key: 'token', value: 'at', type: 'string' },
+        { key: 'tokenSecret', value: 'ats', type: 'string' },
+        { key: 'signatureMethod', value: 'HMAC-SHA1', type: 'string' },
+        { key: 'version', value: '1.0', type: 'string' },
+        { key: 'addParamsToHeader', value: false, type: 'boolean' }
+      ]
+    });
+    expect(result.type).toBe('oauth1');
+    const addParams = result.oauth1.find((p) => p.key === 'addParamsToHeader');
+    expect(addParams.value).toBe(false);
+    expect(result.oauth1.find((p) => p.key === 'consumerKey').value).toBe('ck');
+    expect(result.oauth1.find((p) => p.key === 'token').value).toBe('at');
+  });
+
+  it('round-trips oauth2 authorization_code_with_pkce', async () => {
+    const result = await roundTrip({
+      type: 'oauth2',
+      oauth2: [
+        { key: 'grant_type', value: 'authorization_code_with_pkce', type: 'string' },
+        { key: 'authUrl', value: 'https://auth.example', type: 'string' },
+        { key: 'accessTokenUrl', value: 'https://token.example', type: 'string' },
+        { key: 'redirect_uri', value: 'https://cb.example', type: 'string' },
+        { key: 'clientId', value: 'cid', type: 'string' },
+        { key: 'clientSecret', value: 'csec', type: 'string' },
+        { key: 'scope', value: 'read', type: 'string' },
+        { key: 'addTokenTo', value: 'header', type: 'string' },
+        { key: 'client_authentication', value: 'body', type: 'string' }
+      ]
+    });
+    expect(result.type).toBe('oauth2');
+    expect(result.oauth2.find((p) => p.key === 'grant_type').value).toBe('authorization_code_with_pkce');
+    expect(result.oauth2.find((p) => p.key === 'authUrl').value).toBe('https://auth.example');
+    expect(result.oauth2.find((p) => p.key === 'redirect_uri').value).toBe('https://cb.example');
+    expect(result.oauth2.find((p) => p.key === 'client_authentication').value).toBe('body');
+  });
+
+  it('round-trips oauth2 password_credentials', async () => {
+    const result = await roundTrip({
+      type: 'oauth2',
+      oauth2: [
+        { key: 'grant_type', value: 'password_credentials', type: 'string' },
+        { key: 'accessTokenUrl', value: 'https://token.example', type: 'string' },
+        { key: 'clientId', value: 'cid', type: 'string' },
+        { key: 'clientSecret', value: 'csec', type: 'string' },
+        { key: 'username', value: 'u', type: 'string' },
+        { key: 'password', value: 'p', type: 'string' }
+      ]
+    });
+    expect(result.oauth2.find((p) => p.key === 'grant_type').value).toBe('password_credentials');
+    expect(result.oauth2.find((p) => p.key === 'username').value).toBe('u');
+    expect(result.oauth2.find((p) => p.key === 'password').value).toBe('p');
+  });
+
+  it('round-trips apikey with query placement', async () => {
+    const result = await roundTrip({
+      type: 'apikey',
+      apikey: [
+        { key: 'key', value: 'X-Api-Key', type: 'string' },
+        { key: 'value', value: 'secret', type: 'string' },
+        { key: 'in', value: 'query', type: 'string' }
+      ]
+    });
+    expect(result).toEqual({
+      type: 'apikey',
+      apikey: [
+        { key: 'key', value: 'X-Api-Key', type: 'string' },
+        { key: 'value', value: 'secret', type: 'string' },
+        { key: 'in', value: 'query', type: 'string' }
       ]
     });
   });

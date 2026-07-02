@@ -416,8 +416,110 @@ export const brunoToPostman = (collection) => {
               key: 'value',
               value: itemAuth.apikey?.value || '',
               type: 'string'
+            },
+            {
+              key: 'in',
+              value: itemAuth.apikey?.placement === 'queryparams' ? 'query' : 'header',
+              type: 'string'
             }
           ]
+        };
+      }
+      case 'awsv4': {
+        const awsv4 = itemAuth.awsv4 || {};
+        return {
+          type: 'awsv4',
+          awsv4: [
+            { key: 'accessKey', value: awsv4.accessKeyId || '', type: 'string' },
+            { key: 'secretKey', value: awsv4.secretAccessKey || '', type: 'string' },
+            { key: 'sessionToken', value: awsv4.sessionToken || '', type: 'string' },
+            { key: 'service', value: awsv4.service || '', type: 'string' },
+            { key: 'region', value: awsv4.region || '', type: 'string' }
+          ]
+        };
+      }
+      case 'digest': {
+        const digest = itemAuth.digest || {};
+        return {
+          type: 'digest',
+          digest: [
+            { key: 'username', value: digest.username || '', type: 'string' },
+            { key: 'password', value: digest.password || '', type: 'string' }
+          ]
+        };
+      }
+      case 'ntlm': {
+        const ntlm = itemAuth.ntlm || {};
+        return {
+          type: 'ntlm',
+          ntlm: [
+            { key: 'username', value: ntlm.username || '', type: 'string' },
+            { key: 'password', value: ntlm.password || '', type: 'string' },
+            { key: 'domain', value: ntlm.domain || '', type: 'string' }
+          ]
+        };
+      }
+      case 'oauth1': {
+        const oauth1 = itemAuth.oauth1 || {};
+        return {
+          type: 'oauth1',
+          oauth1: [
+            { key: 'consumerKey', value: oauth1.consumerKey || '', type: 'string' },
+            { key: 'consumerSecret', value: oauth1.consumerSecret || '', type: 'string' },
+            { key: 'token', value: oauth1.accessToken || '', type: 'string' },
+            { key: 'tokenSecret', value: oauth1.accessTokenSecret || '', type: 'string' },
+            { key: 'callback', value: oauth1.callbackUrl || '', type: 'string' },
+            { key: 'verifier', value: oauth1.verifier || '', type: 'string' },
+            { key: 'signatureMethod', value: oauth1.signatureMethod || 'HMAC-SHA1', type: 'string' },
+            { key: 'privateKey', value: oauth1.privateKey || '', type: 'string' },
+            { key: 'timestamp', value: oauth1.timestamp || '', type: 'string' },
+            { key: 'nonce', value: oauth1.nonce || '', type: 'string' },
+            { key: 'version', value: oauth1.version || '1.0', type: 'string' },
+            { key: 'realm', value: oauth1.realm || '', type: 'string' },
+            { key: 'addParamsToHeader', value: oauth1.placement !== 'query', type: 'boolean' },
+            { key: 'includeBodyHash', value: oauth1.includeBodyHash || false, type: 'boolean' }
+          ]
+        };
+      }
+      case 'oauth2': {
+        const oauth2 = itemAuth.oauth2 || {};
+        const grantTypeToPostman = {
+          authorization_code: oauth2.pkce ? 'authorization_code_with_pkce' : 'authorization_code',
+          client_credentials: 'client_credentials',
+          password: 'password_credentials',
+          implicit: 'implicit'
+        };
+        const postmanGrantType = grantTypeToPostman[oauth2.grantType] || 'client_credentials';
+
+        const params = [
+          { key: 'grant_type', value: postmanGrantType, type: 'string' },
+          { key: 'accessTokenUrl', value: oauth2.accessTokenUrl || '', type: 'string' },
+          { key: 'refreshTokenUrl', value: oauth2.refreshTokenUrl || '', type: 'string' },
+          { key: 'clientId', value: oauth2.clientId || '', type: 'string' },
+          { key: 'clientSecret', value: oauth2.clientSecret || '', type: 'string' },
+          { key: 'scope', value: oauth2.scope || '', type: 'string' },
+          { key: 'state', value: oauth2.state || '', type: 'string' },
+          { key: 'addTokenTo', value: oauth2.tokenPlacement === 'header' ? 'header' : 'url', type: 'string' },
+          { key: 'headerPrefix', value: oauth2.tokenHeaderPrefix || '', type: 'string' },
+          { key: 'client_authentication', value: oauth2.credentialsPlacement === 'body' ? 'body' : 'basic_auth_header', type: 'string' }
+        ];
+
+        if (oauth2.grantType === 'authorization_code' || oauth2.grantType === 'implicit') {
+          params.push(
+            { key: 'authUrl', value: oauth2.authorizationUrl || '', type: 'string' },
+            { key: 'redirect_uri', value: oauth2.callbackUrl || '', type: 'string' }
+          );
+        }
+        if (oauth2.grantType === 'password') {
+          params.push(
+            { key: 'username', value: oauth2.username || '', type: 'string' },
+            { key: 'password', value: oauth2.password || '', type: 'string' }
+          );
+        }
+
+        return {
+          type: 'oauth2',
+          oauth2: params
         };
       }
       default: {
