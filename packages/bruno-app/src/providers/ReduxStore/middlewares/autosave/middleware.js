@@ -34,6 +34,7 @@ const actionsToIntercept = [
   'collections/updateRequestGraphqlVariables',
   'collections/updateRequestScript',
   'collections/updateResponseScript',
+  'collections/updateScript',
   'collections/updateRequestTests',
   'collections/updateRequestMethod',
   'collections/addAssertion',
