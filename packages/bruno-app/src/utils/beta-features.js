@@ -8,7 +8,8 @@ export const BETA_FEATURES = Object.freeze({
   NODE_VM: 'nodevm',
   AI_ASSISTANT: 'ai-assistant',
   FILE_CACHE: 'file-cache',
-  AKAMAI_EDGEGRID: 'akamai-edgegrid'
+  AKAMAI_EDGEGRID: 'akamai-edgegrid',
+  GRPC_SCRIPTING: 'grpc-scripting'
 });
 
 /**

@@ -56,6 +56,12 @@ const BETA_FEATURES = [
     description:
       'Sign requests with the Akamai EdgeGrid authentication scheme. Select it from the Auth type dropdown on any request, folder, or collection.',
     docsUrl: 'https://link.usebruno.com/docs/auth'
+  },
+  {
+    id: BETA_FEATURE_IDS.GRPC_SCRIPTING,
+    label: 'gRPC scripting',
+    description:
+      'Write scripts and assertions for gRPC requests. Inspect messages, metadata, and status across the call lifecycle.'
   }
 ];
 
