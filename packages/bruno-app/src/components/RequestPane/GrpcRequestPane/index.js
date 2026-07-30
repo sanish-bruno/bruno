@@ -19,6 +19,8 @@ import { AUTH_MODES_GRPC } from 'utils/common/constants';
 import Script from 'components/RequestPane/Script';
 import { getPhasesByRequestType, REQUEST_TYPES } from '@usebruno/common';
 
+const AI_TABS = ['script', 'docs'];
+
 const GrpcRequestPane = ({ item, collection, handleRun }) => {
   const dispatch = useDispatch();
   const tabs = useSelector((state) => state.tabs.tabs);
@@ -51,7 +53,7 @@ const GrpcRequestPane = ({ item, collection, handleRun }) => {
       case 'docs': {
         return <Documentation item={item} collection={collection} />;
       }
-      case 'scripts': {
+      case 'script': {
         return <Script item={item} collection={collection} />;
       }
       default: {
@@ -113,10 +115,10 @@ const GrpcRequestPane = ({ item, collection, handleRun }) => {
         indicator: docs && docs.length > 0 ? <StatusDot type="default" /> : null
       },
       {
-        key: 'scripts',
+        key: 'script',
         label: (
           <span className="flex items-center gap-2">
-            Scripts
+            Script
             <StatusBadge status="info" size="xs">Beta</StatusBadge>
           </span>
         ),
@@ -146,7 +148,7 @@ const GrpcRequestPane = ({ item, collection, handleRun }) => {
     <div ref={rightContentRef} className="flex flex-grow justify-start items-center">
       <GrpcAuthMode item={item} collection={collection} />
     </div>
-  ) : requestPaneTab === 'docs' ? (
+  ) : AI_TABS.includes(requestPaneTab) ? (
     <div ref={rightContentRef} className="flex items-center">
       <TabBarAiAssist item={item} collection={collection} activeTab={requestPaneTab} />
     </div>
