@@ -4,7 +4,7 @@ const { interpolate: _interpolate, REQUEST_TYPES } = require('@usebruno/common')
 const { createSendRequest } = require('@usebruno/requests').scripting;
 const { jar: createCookieJar, getCookiesForUrl } = require('@usebruno/requests').cookies;
 const CookieList = require('./cookie-list');
-const buildGrpcScriptApi = require('./grpc-script-api');
+const buildGrpcScriptApi = require('./grpc-api');
 
 const variableNameRegex = /^[\w-.]*$/;
 

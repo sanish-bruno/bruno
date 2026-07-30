@@ -139,6 +139,9 @@ const marshallToVm = (value, vm) => {
   } else if (typeof value === 'boolean') {
     return value ? vm.true : vm.false;
   } else if (typeof value === 'object') {
+    if (value instanceof Date) {
+      return vm.newString(value.toISOString());
+    }
     if (Array.isArray(value)) {
       const arr = vm.newArray();
       for (let i = 0; i < value.length; i++) {

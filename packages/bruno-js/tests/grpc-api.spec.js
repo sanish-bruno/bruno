@@ -1,4 +1,4 @@
-const buildGrpcScriptApi = require('../src/grpc-script-api');
+const buildGrpcScriptApi = require('../src/grpc-api');
 
 const makeRequest = (overrides = {}) => ({
   url: 'grpc://localhost:9000',
@@ -58,17 +58,35 @@ describe('beforeCallStart phase', () => {
       expect(metadata.has('x-user-id')).toBe(true);
       expect(metadata.has('x-missing')).toBe(false);
       expect(metadata.count()).toBe(2);
-      expect(metadata.all()).toEqual({ 'x-user-id': 'user-42', 'x-tenant-id': 'acme-corp' });
+      expect(metadata.all()).toEqual([
+        { key: 'x-user-id', value: 'user-42' },
+        { key: 'x-tenant-id', value: 'acme-corp' }
+      ]);
     });
 
-    it('iterates with find / filter / map / each yielding key/value', () => {
+    it('get / has / one / indexOf are case-insensitive', () => {
       const metadata = writable();
-      expect(metadata.find((value) => value === 'acme-corp')).toEqual({ key: 'x-tenant-id', value: 'acme-corp' });
-      expect(metadata.filter((value) => value === 'user-42')).toEqual([{ key: 'x-user-id', value: 'user-42' }]);
-      expect(metadata.map((value, key) => `${key}=${value}`)).toEqual(['x-user-id=user-42', 'x-tenant-id=acme-corp']);
+      expect(metadata.get('X-USER-ID')).toBe('user-42');
+      expect(metadata.has('X-User-Id')).toBe(true);
+      expect(metadata.one('X-USER-ID')).toEqual({ key: 'x-user-id', value: 'user-42' });
+      expect(metadata.indexOf('X-User-Id')).toBe(0);
+    });
+
+    it('toObject returns a { key: value } map', () => {
+      expect(writable().toObject()).toEqual({ 'x-user-id': 'user-42', 'x-tenant-id': 'acme-corp' });
+    });
+
+    it('iterates entries with find / filter / map / each yielding {key, value}', () => {
+      const metadata = writable();
+      expect(metadata.find((entry) => entry.value === 'acme-corp')).toEqual({ key: 'x-tenant-id', value: 'acme-corp' });
+      expect(metadata.filter((entry) => entry.value === 'user-42')).toEqual([{ key: 'x-user-id', value: 'user-42' }]);
+      expect(metadata.map((entry) => `${entry.key}=${entry.value}`)).toEqual([
+        'x-user-id=user-42',
+        'x-tenant-id=acme-corp'
+      ]);
 
       const seen = [];
-      metadata.each((value, key) => seen.push(`${key}:${value}`));
+      metadata.each((entry) => seen.push(`${entry.key}:${entry.value}`));
       expect(seen).toEqual(['x-user-id:user-42', 'x-tenant-id:acme-corp']);
     });
 
@@ -81,14 +99,32 @@ describe('beforeCallStart phase', () => {
       expect(metadata.has('x-user-id')).toBe(false);
 
       metadata.setAll({ authorization: 'Bearer token123' });
-      expect(metadata.all()).toEqual({ authorization: 'Bearer token123' });
+      expect(metadata.toObject()).toEqual({ authorization: 'Bearer token123' });
 
       metadata.clear();
       expect(metadata.count()).toBe(0);
     });
 
+    it('set replaces an existing entry case-insensitively', () => {
+      const request = makeRequest({ headers: { Authorization: 'Bearer old' } });
+      const metadata = buildGrpcScriptApi({ phaseType: 'beforeCallStart', request }).request.metadata;
+
+      metadata.set('authorization', 'Bearer new');
+      expect(Object.keys(request.headers)).toEqual(['authorization']);
+      expect(request.headers.authorization).toBe('Bearer new');
+    });
+
+    it('remove is case-insensitive', () => {
+      const request = makeRequest({ headers: { Authorization: 'Bearer token' } });
+      const metadata = buildGrpcScriptApi({ phaseType: 'beforeCallStart', request }).request.metadata;
+
+      metadata.remove('AUTHORIZATION');
+      expect(request.headers.Authorization).toBeUndefined();
+    });
+
     it('setAll rejects a non-object payload', () => {
       expect(() => writable().setAll('not-an-object')).toThrow(TypeError);
+      expect(() => writable().setAll(['not', 'an', 'object'])).toThrow(TypeError);
     });
   });
 });
@@ -249,13 +285,16 @@ describe('request.authMode', () => {
   test.each([
     ['oauth2', 'oauth2', { oauth2: { grantType: 'client_credentials' } }],
     ['a Bearer Authorization entry', 'bearer', { headers: { Authorization: 'Bearer token123' } }],
+    ['a lowercased bearer authorization entry', 'bearer', { headers: { authorization: 'Bearer token123' } }],
     ['a Basic Authorization entry', 'basic', { headers: { Authorization: 'Basic dXNlcjpwYXNz' } }],
     ['a basicAuth username', 'basic', { basicAuth: { username: 'user', password: 'pass' } }],
     ['an api key in query params', 'apikey', { apiKeyAuthValueForQueryParams: { key: 'api_key', value: 'secret' } }],
     ['a named api-key entry', 'apikey', { apiKeyHeaderName: 'x-api-key', headers: { 'x-api-key': 'secret' } }],
+    ['a mixed-case api-key entry', 'apikey', { apiKeyHeaderName: 'x-api-key', headers: { 'X-API-Key': 'secret' } }],
     ['a named api-key entry with an empty value', 'apikey', { apiKeyHeaderName: 'x-api-key', headers: { 'x-api-key': '' } }],
     ['apiKeyHeaderName but no such entry', 'none', { apiKeyHeaderName: 'x-api-key', headers: {} }],
     ['an X-WSSE entry', 'wsse', { headers: { 'X-WSSE': 'UsernameToken ...' } }],
+    ['a lowercased x-wsse entry', 'wsse', { headers: { 'x-wsse': 'UsernameToken ...' } }],
     ['no auth at all', 'none', {}],
     ['malformed metadata', 'none', { headers: ['Authorization: Bearer token123'] }]
   ])('resolves %s to "%s"', (_label, expected, overrides) => {
