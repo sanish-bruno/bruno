@@ -1,5 +1,6 @@
 const { cleanJson, cleanCircularJson } = require('../../../utils');
 const { marshallToVm } = require('../utils');
+const { bridgeMethodSets } = require('../../../property-lists/surfaces');
 
 /**
  * Creates an async bridge that resolves with `undefined` (write-only).
@@ -184,7 +185,28 @@ const createPropertyListBridge = (vm, nativeList, targetObj, options) => {
   return { evalCode };
 };
 
+/**
+ * Attach a native PropertyList at `parentObj[property]`, bridged with the method sets
+ * its surface derives (see surfaces.js). `decorate(listObj)` may add extra props
+ * before the handle is disposed.
+ *
+ * @returns {string} Code the caller must eval once `objectPath` resolves in the VM
+ */
+const attachPropertyList = (vm, nativeList, parentObj, property, objectPath, decorate) => {
+  const globalPath = `${objectPath}.${property}`;
+  const listObj = vm.newObject();
+  const { evalCode } = createPropertyListBridge(vm, nativeList, listObj, {
+    globalPath,
+    ...bridgeMethodSets(globalPath.replace('globalThis.', ''))
+  });
+  if (decorate) decorate(listObj);
+  vm.setProp(parentObj, property, listObj);
+  listObj.dispose();
+  return evalCode;
+};
+
 module.exports = {
   createPropertyListBridge,
-  createAsyncBridge
+  createAsyncBridge,
+  attachPropertyList
 };

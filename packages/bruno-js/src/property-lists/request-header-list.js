@@ -1,9 +1,7 @@
-const { PropertyList } = require('../property-list');
-const { ciEquals, findKeyCI } = require('../key-matching');
+const { PropertyList } = require('./property-list');
+const { ciEquals, findKeyCI } = require('./key-matching');
+const { httpWire, postmanHeaders } = require('./serializers');
 
-/**
- * Parse a "Key: Value" string into a { key, value } object.
- */
 const parseHeaderString = (str) => {
   if (typeof str !== 'string') return null;
   const idx = str.indexOf(':');
@@ -12,24 +10,22 @@ const parseHeaderString = (str) => {
 };
 
 /**
- * RequestHeaderStore — StoreAdapter over the live request config.
+ * RequestHeaderList — `req.headerList`. A live view over the raw request config.
  *
  * Reads rebuild the list from `req.headers` (enabled) and `req.disabledHeaders`
  * (surfaced with `disabled: true`) on every call, so the list can never diverge
- * from the raw `req.headers` object scripts also touch directly. Writes manipulate
+ * from the raw `req.headers` object scripts also touch directly. Writes mutate
  * the request config in place, preserving `__headersToDelete` tracking so the
  * axios interceptor can suppress default headers added after the script ran.
- *
- * Header object shape: `{ key, value }` for enabled, `{ key, value, disabled: true }`
- * for disabled headers.
  */
-class RequestHeaderStore {
+class RequestHeaderList extends PropertyList {
   #req;
 
   /**
    * @param {object} req - The raw request config (must have a `headers` property)
    */
   constructor(req) {
+    super({ caseInsensitive: true, uniqueKeys: true, stringify: httpWire, objectify: postmanHeaders });
     this.#req = req;
   }
 
@@ -48,11 +44,6 @@ class RequestHeaderStore {
     return this.read().some((i) => ciEquals(i.key, key));
   }
 
-  /**
-   * Delete a header by exact key and track it in `__headersToDelete`
-   * so the axios interceptor can suppress default headers added later.
-   * @param {string} name
-   */
   #deleteHeader(name) {
     delete this.#req.headers[name];
     if (!this.#req.__headersToDelete) {
@@ -63,10 +54,6 @@ class RequestHeaderStore {
     }
   }
 
-  /**
-   * Delete an enabled header by key (case-insensitive).
-   * @param {string} key
-   */
   #deleteHeaderCI(key) {
     const matchingKey = findKeyCI(this.#req.headers || {}, key);
     if (matchingKey !== undefined) {
@@ -74,24 +61,13 @@ class RequestHeaderStore {
     }
   }
 
-  /**
-   * Remove all disabled headers matching a key (case-insensitive).
-   * @param {string} key
-   */
   #removeDisabledHeader(key) {
     const arr = this.#req.disabledHeaders;
     if (!arr) return;
     this.#req.disabledHeaders = arr.filter((h) => !ciEquals(h.name, key));
   }
 
-  // ── Write methods ──────────────────────────────────────────────────────
-
-  /**
-   * Add a header. Accepts a { key, value } object, a "Key: Value" string,
-   * or two arguments (name, value). Delegates to upsert().
-   * @param {object|string} itemOrName
-   * @param {string} [value]
-   */
+  /** Accepts a `{ key, value }` object, a "Key: Value" string, or (name, value). */
   add(itemOrName, value) {
     if (typeof itemOrName === 'string' && value !== undefined) {
       this.upsert({ key: itemOrName, value });
@@ -104,10 +80,7 @@ class RequestHeaderStore {
   }
 
   /**
-   * Set (or replace) a header on the request (case-insensitive key match).
-   * Accepts a { key, value } object or two arguments (name, value).
-   * @param {object|string} itemOrName
-   * @param {string} [value]
+   * Set (or replace) a header, matching the key case-insensitively.
    * @returns {boolean|null} `true` if added, `false` if updated, `null` if input was nil
    */
   upsert(itemOrName, value) {
@@ -119,12 +92,10 @@ class RequestHeaderStore {
     const headers = this.#req.headers || {};
     const existingKey = findKeyCI(headers, item.key);
     const existed = existingKey !== undefined;
-    // Remove old-cased key if casing differs, tracking it for the axios interceptor
     if (existed && existingKey !== item.key) {
       this.#deleteHeader(existingKey);
     }
     headers[item.key] = item.value;
-    // Remove from __headersToDelete since we just (re-)added this header
     const toDelete = this.#req.__headersToDelete;
     if (toDelete) {
       const idx = toDelete.findIndex((k) => ciEquals(k, item.key));
@@ -133,12 +104,7 @@ class RequestHeaderStore {
     return !existed;
   }
 
-  /**
-   * Remove header(s) matching a predicate, key string, or item reference.
-   * String and object removal are case-insensitive.
-   * @param {Function|string|object} predicate
-   * @param {*} [context] - Bind `this` for function predicates
-   */
+  /** Remove by predicate, key string, or item reference; string and object forms are case-insensitive. */
   remove(predicate, context) {
     if (typeof predicate === 'function') {
       const bound = context !== undefined ? predicate.bind(context) : predicate;
@@ -160,9 +126,6 @@ class RequestHeaderStore {
     }
   }
 
-  /**
-   * Remove all headers (enabled and disabled) from the request.
-   */
   clear() {
     for (const header of this.read()) {
       if (!header.disabled) {
@@ -175,15 +138,9 @@ class RequestHeaderStore {
   }
 
   /**
-   * Load one or more headers into the list (without clearing existing ones).
-   * Accepts an array of { key, value } objects or a multi-line "Key: Value" string.
-   *
-   * Headers whose key already exists are skipped (case-insensitive).
-   * Note: Postman's populate adds duplicate keys because Postman supports
-   * multiple headers with the same name. Bruno does not, so we skip
-   * existing keys to preserve the current value.
-   *
-   * @param {Array|string} items
+   * Load headers from an array of `{ key, value }` or a multi-line "Key: Value" string.
+   * Keys that already exist are skipped: Postman's populate adds duplicates because
+   * Postman supports repeated header names, Bruno does not.
    */
   populate(items) {
     if (typeof items === 'string') {
@@ -204,10 +161,6 @@ class RequestHeaderStore {
     }
   }
 
-  /**
-   * Clear all headers and repopulate with new items.
-   * @param {Array|string} items
-   */
   repopulate(items) {
     this.clear();
     this.populate(items);
@@ -215,8 +168,7 @@ class RequestHeaderStore {
 
   /**
    * Merge items from another PropertyList or array.
-   * @param {PropertyList|Array} source
-   * @param {boolean} [prune=false] - If true, remove items not present in source after merging
+   * @param {boolean} [prune=false] - Remove headers absent from `source` after merging
    */
   assimilate(source, prune) {
     let items;
@@ -244,4 +196,4 @@ class RequestHeaderStore {
   }
 }
 
-module.exports = RequestHeaderStore;
+module.exports = RequestHeaderList;

@@ -1,28 +1,17 @@
-const { PROPERTY_LIST_MANIFEST, descriptorFor, bridgeMethodSets } = require('../../src/property-lists/manifest');
-const { createPropertyList } = require('../../src/property-lists/create-property-list');
+const { SURFACES, bridgeMethodSets } = require('../../src/property-lists/surfaces');
+const { PropertyList } = require('../../src/property-lists/property-list');
 
 // The derived sets are pinned as explicit arrays so any change to a surface's
 // script-facing API shows up here as a reviewable diff.
 
 const READS = ['get', 'has', 'count', 'indexOf', 'toObject', 'toString'];
 const READ_OBJECTS = ['one', 'all', 'idx', 'toJSON'];
-const POSITIONAL = ['insert', 'insertAfter', 'prepend', 'append'];
 
-describe('property-list manifest', () => {
-  test('paths are unique and resolvable', () => {
-    const paths = PROPERTY_LIST_MANIFEST.map((d) => d.path);
-    expect(new Set(paths).size).toBe(paths.length);
-    for (const path of paths) {
-      expect(descriptorFor(path).path).toBe(path);
+describe('property-list surfaces', () => {
+  test('every surface is served by a PropertyList subclass', () => {
+    for (const ListClass of Object.values(SURFACES)) {
+      expect(Object.prototype.isPrototypeOf.call(PropertyList, ListClass)).toBe(true);
     }
-  });
-
-  test('descriptorFor() returns undefined for unknown paths', () => {
-    expect(descriptorFor('bru.unknown')).toBeUndefined();
-  });
-
-  test('createPropertyList() throws on unknown paths', () => {
-    expect(() => createPropertyList('bru.unknown')).toThrow('Unknown property list path: \'bru.unknown\'');
   });
 
   test('bridgeMethodSets() throws on unknown paths', () => {
@@ -35,7 +24,7 @@ describe('property-list manifest', () => {
       expect(bridgeMethodSets(path)).toEqual({
         syncReadMethods: READS,
         syncReadObjectMethods: READ_OBJECTS,
-        syncWriteMethods: ['upsert', 'add', 'remove', 'clear', ...POSITIONAL],
+        syncWriteMethods: ['upsert', 'add', 'remove', 'clear'],
         asyncWriteMethods: [],
         withIterators: true
       });
@@ -46,7 +35,7 @@ describe('property-list manifest', () => {
     expect(bridgeMethodSets(path)).toEqual({
       syncReadMethods: READS,
       syncReadObjectMethods: READ_OBJECTS,
-      syncWriteMethods: ['add', 'upsert', 'remove', 'clear', 'populate', 'repopulate', 'assimilate', ...POSITIONAL],
+      syncWriteMethods: ['add', 'upsert', 'remove', 'clear', 'populate', 'repopulate', 'assimilate'],
       asyncWriteMethods: [],
       withIterators: true
     });
@@ -56,7 +45,7 @@ describe('property-list manifest', () => {
     expect(bridgeMethodSets('bru.cookies')).toEqual({
       syncReadMethods: READS,
       syncReadObjectMethods: READ_OBJECTS,
-      syncWriteMethods: POSITIONAL,
+      syncWriteMethods: [],
       asyncWriteMethods: ['add', 'upsert', 'remove', 'delete', 'clear'],
       withIterators: true
     });

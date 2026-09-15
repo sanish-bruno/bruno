@@ -1,6 +1,6 @@
 const { get } = require('@usebruno/query');
 const _ = require('lodash');
-const { createPropertyList } = require('./property-lists/create-property-list');
+const ResponseHeaderList = require('./property-lists/response-header-list');
 
 class BrunoResponse {
   constructor(res) {
@@ -13,7 +13,7 @@ class BrunoResponse {
     this.url = res?.request ? res.request.protocol + '//' + res.request.host + res.request.path : null;
 
     // Static read-only snapshot — write methods throw
-    this.headerList = createPropertyList('res.headerList', { source: res });
+    this.headerList = new ResponseHeaderList(res);
 
     // Make the instance callable
     const callable = (...args) => get(this.body, ...args);

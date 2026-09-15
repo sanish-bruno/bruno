@@ -1,21 +1,8 @@
-const { PropertyList, assemblePropertyList } = require('../../src/property-lists/property-list');
-const ArrayStore = require('../../src/property-lists/stores/array-store');
+const { PropertyList, writeMethodsOf, mirrorAsReadOnly } = require('../../src/property-lists/property-list');
+const ArrayPropertyList = require('../../src/property-lists/array-property-list');
+const serializers = require('../../src/property-lists/serializers');
 
-const makeDescriptor = (overrides = {}) => ({
-  ordered: true,
-  writable: true,
-  caseInsensitive: false,
-  uniqueKeys: false,
-  serializers: {},
-  writeMethods: ['add', 'upsert', 'remove', 'clear', 'populate', 'repopulate', 'assimilate'],
-  errors: {
-    readonly: (method) => `${method}() is not available — this list is read-only`,
-    unordered: (method) => `${method}() is not available — this list has no ordering`
-  },
-  ...overrides
-});
-
-const makeList = (items, overrides) => assemblePropertyList(makeDescriptor(overrides), new ArrayStore(items));
+const makeList = (items, options) => new ArrayPropertyList(items, options);
 
 const abcItems = [
   { key: 'a', value: '1' },
@@ -141,18 +128,18 @@ describe('PropertyList', () => {
   });
 
   describe('live view', () => {
-    test('reads from the store on every call', () => {
+    test('reads from the subclass on every call', () => {
       let callCount = 0;
-      const store = {
-        read: () => {
+      class CountingList extends PropertyList {
+        read() {
           callCount++;
           return [
             { key: 'x', value: '10' },
             { key: 'y', value: '20' }
           ];
         }
-      };
-      const list = assemblePropertyList(makeDescriptor({ writeMethods: [], ordered: false }), store);
+      }
+      const list = new CountingList();
 
       expect(list.get('x')).toBe('10');
       expect(list.count()).toBe(2);
@@ -259,17 +246,17 @@ describe('PropertyList', () => {
     });
 
     test('toString httpWire skips disabled headers and appends trailing newline', () => {
-      const list = makeList(headerItems, { serializers: { toString: 'httpWire' } });
+      const list = makeList(headerItems, { stringify: serializers.httpWire });
       expect(list.toString()).toBe('Content-Type: application/json\nX-Token: abc\n');
     });
 
     test('toString httpWire returns empty string for empty list', () => {
-      const list = makeList([{ key: 'a', value: '1', disabled: true }], { serializers: { toString: 'httpWire' } });
+      const list = makeList([{ key: 'a', value: '1', disabled: true }], { stringify: serializers.httpWire });
       expect(list.toString()).toBe('');
     });
 
     test('toString metadataLines joins without trailing newline', () => {
-      const list = makeList(abcItems, { serializers: { toString: 'metadataLines' } });
+      const list = makeList(abcItems, { stringify: serializers.metadataLines });
       expect(list.toString()).toBe('a: 1\nb: 2\nc: 3');
     });
 
@@ -278,7 +265,7 @@ describe('PropertyList', () => {
     });
 
     test('toObject postmanHeaders honors all four arguments', () => {
-      const list = makeList(headerItems, { serializers: { toObject: 'postmanHeaders' } });
+      const list = makeList(headerItems, { objectify: serializers.postmanHeaders });
       expect(list.toObject()).toEqual({ 'Accept': '*/*', 'Content-Type': 'application/json', 'X-Token': 'abc' });
       expect(list.toObject(true)).toEqual({ 'Content-Type': 'application/json', 'X-Token': 'abc' });
       expect(list.toObject(false, false)).toEqual({ 'accept': '*/*', 'content-type': 'application/json', 'x-token': 'abc' });
@@ -289,14 +276,14 @@ describe('PropertyList', () => {
           { key: 'X', value: 'second' },
           { key: '', value: 'blank' }
         ],
-        { serializers: { toObject: 'postmanHeaders' } }
+        { objectify: serializers.postmanHeaders }
       );
       expect(dupList.toObject(false, true, true)).toEqual({ 'X': 'first', '': 'blank' });
       expect(dupList.toObject(false, true, false, true)).toEqual({ X: 'second' });
     });
   });
 
-  describe('ArrayStore write methods', () => {
+  describe('ArrayPropertyList write methods', () => {
     let list;
 
     beforeEach(() => {
@@ -434,71 +421,69 @@ describe('PropertyList', () => {
     });
   });
 
-  describe('capability gating', () => {
-    test('readonly surface: write methods throw the readonly error', () => {
-      const list = makeList(abcItems, { writable: false });
-      for (const method of ['add', 'upsert', 'remove', 'clear', 'populate', 'repopulate', 'assimilate']) {
-        expect(() => list[method]({ key: 'x', value: '1' })).toThrow(`${method}() is not available — this list is read-only`);
+  describe('positional mutators', () => {
+    test('a keyed subclass has none', () => {
+      class KeyedList extends PropertyList {
+        read() {
+          return abcItems;
+        }
       }
-    });
-
-    test('readonly surface: read methods still work', () => {
-      const list = makeList(abcItems, { writable: false });
-      expect(list.get('a')).toBe('1');
-      expect(list.count()).toBe(3);
-    });
-
-    test('unordered surface: positional mutators throw the unordered error', () => {
-      const list = makeList(abcItems, { ordered: false });
+      const list = new KeyedList();
       for (const method of ['insert', 'insertAfter', 'prepend', 'append']) {
-        expect(() => list[method]({ key: 'x', value: '1' })).toThrow(`${method}() is not available — this list has no ordering`);
+        expect(list[method]).toBeUndefined();
       }
-    });
-
-    test('unordered surface: non-positional writes still work', () => {
-      const list = makeList(abcItems, { ordered: false });
-      list.add({ key: 'd', value: '4' });
-      expect(list.get('d')).toBe('4');
-    });
-
-    test('unordered is checked before readonly for positional mutators', () => {
-      const list = makeList(abcItems, { ordered: false, writable: false });
-      expect(() => list.insert({ key: 'x', value: '1' }, 'a')).toThrow('insert() is not available — this list has no ordering');
-    });
-
-    test('idx() stays available on unordered and readonly surfaces', () => {
-      const list = makeList(abcItems, { ordered: false, writable: false });
       expect(list.idx(1)).toEqual({ key: 'b', value: '2' });
     });
 
-    test('writable: \'wiring\' resolves from the wiring flag', () => {
-      const writableList = assemblePropertyList(makeDescriptor({ writable: 'wiring' }), new ArrayStore(abcItems), {
-        writable: true
-      });
-      writableList.add({ key: 'd', value: '4' });
-      expect(writableList.get('d')).toBe('4');
-
-      const readonlyList = assemblePropertyList(makeDescriptor({ writable: 'wiring' }), new ArrayStore(abcItems), {
-        writable: false
-      });
-      expect(() => readonlyList.add({ key: 'd', value: '4' })).toThrow('add() is not available — this list is read-only');
-    });
-
-    test('extras are attached ungated', () => {
-      const store = new ArrayStore(abcItems);
-      store.jar = () => 'the-jar';
-      const list = assemblePropertyList(makeDescriptor({ writable: false, extras: ['jar'] }), store);
-      expect(list.jar()).toBe('the-jar');
-    });
-
-    test('attached methods are non-enumerable', () => {
+    test('an ordered subclass defines them, and they count as its write methods', () => {
       const list = makeList(abcItems);
-      expect(Object.keys(list)).toEqual([]);
+      list.prepend({ key: 'z', value: '0' });
+      expect(list.idx(0)).toEqual({ key: 'z', value: '0' });
+      expect(writeMethodsOf(ArrayPropertyList)).toEqual(expect.arrayContaining(['insert', 'insertAfter', 'prepend', 'append']));
+    });
+  });
+
+  describe('writeMethodsOf', () => {
+    test('lists the methods a subclass adds, not the reads it inherits', () => {
+      expect(writeMethodsOf(ArrayPropertyList)).toEqual([
+        'add', 'upsert', 'remove', 'clear', 'populate', 'repopulate', 'assimilate',
+        'append', 'prepend', 'insert', 'insertAfter'
+      ]);
+    });
+  });
+
+  describe('mirrorAsReadOnly', () => {
+    class Editable extends PropertyList {
+      read() {
+        return abcItems;
+      }
+
+      add() {}
+      clear() {}
+    }
+    class Frozen extends PropertyList {
+      static errors = { readonly: (method) => `${method}() is frozen` };
+      read() {
+        return abcItems;
+      }
+    }
+    mirrorAsReadOnly(Frozen, Editable);
+
+    test('installs every write method of the sibling as a thrower', () => {
+      const list = new Frozen();
+      expect(() => list.add({ key: 'x', value: '1' })).toThrow('add() is frozen');
+      expect(() => list.clear()).toThrow('clear() is frozen');
+      expect(list.get('a')).toBe('1');
+    });
+
+    test('the throwers live on the prototype, not the instance', () => {
+      expect(Object.keys(new Frozen())).toEqual([]);
+      expect(writeMethodsOf(Frozen)).toEqual(writeMethodsOf(Editable));
     });
   });
 
   describe('isPropertyList', () => {
-    test('returns true for assembled lists', () => {
+    test('returns true for subclasses', () => {
       expect(PropertyList.isPropertyList(makeList([]))).toBe(true);
     });
 

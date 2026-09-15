@@ -28,12 +28,10 @@ describe('req.headerList property list', () => {
     expect(list.idx(10)).toBeUndefined();
   });
 
-  test('positional mutators throw — request headers have no ordering', () => {
+  test('has no positional mutators, since headers are a keyed map', () => {
     const { list } = createReqHeaders();
-    for (const method of ['prepend', 'insert', 'insertAfter', 'append']) {
-      expect(() => list[method]({ key: 'x', value: '1' })).toThrow(
-        `${method}() is not available on req.headerList — request headers are a keyed map with no ordering`
-      );
+    for (const method of ['insert', 'insertAfter', 'prepend', 'append']) {
+      expect(list[method]).toBeUndefined();
     }
   });
 

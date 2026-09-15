@@ -1,6 +1,5 @@
 const { marshallToVm } = require('../utils');
-const { createPropertyListBridge } = require('../utils/property-list-bridge');
-const { bridgeMethodSets } = require('../../../property-lists/manifest');
+const { attachPropertyList } = require('../utils/property-list-bridge');
 
 const addBrunoRequestShimToContext = (vm, req) => {
   const reqObject = vm.newObject();
@@ -35,13 +34,7 @@ const addBrunoRequestShimToContext = (vm, req) => {
   headersVal.dispose();
 
   // req.headerList — PropertyList bridge for structured header operations
-  const headerListObj = vm.newObject();
-  const { evalCode: headersEvalCode } = createPropertyListBridge(vm, req.headerList, headerListObj, {
-    globalPath: 'globalThis.req.headerList',
-    ...bridgeMethodSets('req.headerList')
-  });
-  vm.setProp(reqObject, 'headerList', headerListObj);
-  headerListObj.dispose();
+  const headersEvalCode = attachPropertyList(vm, req.headerList, reqObject, 'headerList', 'globalThis.req');
 
   let getUrl = vm.newFunction('getUrl', function () {
     return marshallToVm(req.getUrl(), vm);
