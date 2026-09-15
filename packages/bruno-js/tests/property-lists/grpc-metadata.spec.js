@@ -1,4 +1,4 @@
-const { createPropertyList } = require('../../src/property-lists/create-property-list');
+const GrpcMetadataList = require('../../src/property-lists/grpc-metadata-list');
 const { PropertyList } = require('../../src/property-lists/property-list');
 
 describe('gRPC metadata property list', () => {
@@ -8,7 +8,7 @@ describe('gRPC metadata property list', () => {
   };
 
   function createList({ metadata = { ...defaultMetadata }, writable = true } = {}) {
-    const list = createPropertyList('bru.grpc.request.metadata', { readMetadata: () => metadata, writable });
+    const list = new GrpcMetadataList(() => metadata, { writable });
     return { list, metadata };
   }
 
@@ -139,21 +139,16 @@ describe('gRPC metadata property list', () => {
     expect(metadata).toEqual(defaultMetadata);
   });
 
-  test('positional mutators throw the unordered error, before the readonly check', () => {
+  test('has no positional mutators, since metadata is a keyed map', () => {
     const { list } = createList({ writable: false });
-
     for (const method of ['insert', 'insertAfter', 'prepend', 'append']) {
-      expect(() => list[method]({ key: 'x', value: '1' })).toThrow(
-        `${method}() is not available on gRPC metadata — it is a key-value map with no ordering`
-      );
+      expect(list[method]).toBeUndefined();
     }
   });
 
-  test('response metadata and trailers surfaces are read-only', () => {
-    for (const path of ['bru.grpc.response.metadata', 'bru.grpc.response.trailers']) {
-      const list = createPropertyList(path, { readMetadata: () => ({ ...defaultMetadata }) });
-      expect(list.get('x-token')).toBe('abc123');
-      expect(() => list.upsert('x', '1')).toThrow('metadata.upsert() is not available once the call has been sent');
-    }
+  test('a list is read-only unless constructed writable, as response metadata and trailers are', () => {
+    const list = new GrpcMetadataList(() => ({ ...defaultMetadata }));
+    expect(list.get('x-token')).toBe('abc123');
+    expect(() => list.upsert('x', '1')).toThrow('metadata.upsert() is not available once the call has been sent');
   });
 });

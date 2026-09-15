@@ -1,7 +1,148 @@
 const { cleanJson, cleanCircularJson } = require('../../../utils');
 const { marshallToVm } = require('../utils');
-const { createPropertyListBridge } = require('../utils/property-list-bridge');
-const { bridgeMethodSets } = require('../../../property-lists/manifest');
+const { attachPropertyList } = require('../utils/property-list-bridge');
+
+// `_jar` hands the VM a promise-based handle; the evalCode below wraps it with the callback-or-promise API.
+const addJarToCookies = (vm, bru, cookiesObject) => {
+  const _jarFn = vm.newFunction('_jar', () => {
+    const nativeJar = bru.cookies.jar();
+    const jarObj = vm.newObject();
+
+    const _getCookieFn = vm.newFunction('_getCookie', (url, cookieName) => {
+      const promise = vm.newPromise();
+      nativeJar.getCookie(vm.dump(url), vm.dump(cookieName), (err, cookie) => {
+        if (err) {
+          promise.reject(marshallToVm(cleanJson(err), vm));
+        } else {
+          promise.resolve(marshallToVm(cleanCircularJson(cookie), vm));
+        }
+      });
+      promise.settled.then(vm.runtime.executePendingJobs);
+      return promise.handle;
+    });
+    _getCookieFn.consume((handle) => vm.setProp(jarObj, '_getCookie', handle));
+
+    const _getCookiesFn = vm.newFunction('_getCookies', (url) => {
+      const promise = vm.newPromise();
+      nativeJar.getCookies(vm.dump(url), (err, cookies) => {
+        if (err) {
+          promise.reject(marshallToVm(cleanJson(err), vm));
+        } else {
+          promise.resolve(marshallToVm(cleanCircularJson(cookies), vm));
+        }
+      });
+      promise.settled.then(vm.runtime.executePendingJobs);
+      return promise.handle;
+    });
+    _getCookiesFn.consume((handle) => vm.setProp(jarObj, '_getCookies', handle));
+
+    const _setCookieFn = vm.newFunction('_setCookie', (url, nameOrCookieObj, value) => {
+      const promise = vm.newPromise();
+      const dumpedUrl = vm.dump(url);
+      const dumpedNameOrObj = vm.dump(nameOrCookieObj);
+
+      // Check if the second argument is an object (cookie object case)
+      if (typeof dumpedNameOrObj === 'object' && dumpedNameOrObj !== null) {
+        // Cookie object case: setCookie(url, cookieObject, callback)
+        nativeJar.setCookie(dumpedUrl, dumpedNameOrObj, (err) => {
+          if (err) {
+            promise.reject(marshallToVm(cleanJson(err), vm));
+          } else {
+            promise.resolve(vm.undefined);
+          }
+        });
+      } else {
+        // Name/value case: setCookie(url, name, value, callback)
+        const dumpedValue = value ? vm.dump(value) : '';
+        nativeJar.setCookie(dumpedUrl, dumpedNameOrObj, dumpedValue, (err) => {
+          if (err) {
+            promise.reject(marshallToVm(cleanJson(err), vm));
+          } else {
+            promise.resolve(vm.undefined);
+          }
+        });
+      }
+
+      promise.settled.then(vm.runtime.executePendingJobs);
+      return promise.handle;
+    });
+    _setCookieFn.consume((handle) => vm.setProp(jarObj, '_setCookie', handle));
+
+    const _setCookiesFn = vm.newFunction('_setCookies', (url, cookiesArray) => {
+      const promise = vm.newPromise();
+
+      nativeJar.setCookies(vm.dump(url), vm.dump(cookiesArray), (err) => {
+        if (err) {
+          promise.reject(marshallToVm(cleanJson(err), vm));
+        } else {
+          promise.resolve(vm.undefined);
+        }
+      });
+      promise.settled.then(vm.runtime.executePendingJobs);
+      return promise.handle;
+    });
+    _setCookiesFn.consume((handle) => vm.setProp(jarObj, '_setCookies', handle));
+
+    const _clearFn = vm.newFunction('_clear', () => {
+      const promise = vm.newPromise();
+      nativeJar.clear((err) => {
+        if (err) {
+          promise.reject(marshallToVm(cleanJson(err), vm));
+        } else {
+          promise.resolve(vm.undefined);
+        }
+      });
+      promise.settled.then(vm.runtime.executePendingJobs);
+      return promise.handle;
+    });
+    _clearFn.consume((handle) => vm.setProp(jarObj, '_clear', handle));
+
+    const _deleteCookiesFn = vm.newFunction('_deleteCookies', (url) => {
+      const promise = vm.newPromise();
+      nativeJar.deleteCookies(vm.dump(url), (err) => {
+        if (err) {
+          promise.reject(marshallToVm(cleanJson(err), vm));
+        } else {
+          promise.resolve(vm.undefined);
+        }
+      });
+      promise.settled.then(vm.runtime.executePendingJobs);
+      return promise.handle;
+    });
+    _deleteCookiesFn.consume((handle) => vm.setProp(jarObj, '_deleteCookies', handle));
+
+    const _deleteCookieFn = vm.newFunction('_deleteCookie', (url, cookieName) => {
+      const promise = vm.newPromise();
+      nativeJar.deleteCookie(vm.dump(url), vm.dump(cookieName), (err) => {
+        if (err) {
+          promise.reject(marshallToVm(cleanJson(err), vm));
+        } else {
+          promise.resolve(vm.undefined);
+        }
+      });
+      promise.settled.then(vm.runtime.executePendingJobs);
+      return promise.handle;
+    });
+    _deleteCookieFn.consume((handle) => vm.setProp(jarObj, '_deleteCookie', handle));
+
+    const _hasCookieFn = vm.newFunction('_hasCookie', (url, cookieName) => {
+      const promise = vm.newPromise();
+      nativeJar.hasCookie(vm.dump(url), vm.dump(cookieName), (err, exists) => {
+        if (err) {
+          promise.reject(marshallToVm(cleanJson(err), vm));
+        } else {
+          promise.resolve(marshallToVm(exists, vm));
+        }
+      });
+      promise.settled.then(vm.runtime.executePendingJobs);
+      return promise.handle;
+    });
+    _hasCookieFn.consume((handle) => vm.setProp(jarObj, '_hasCookie', handle));
+
+    return jarObj;
+  });
+  _jarFn.consume((handle) => vm.setProp(cookiesObject, '_jar', handle));
+};
 
 const addBruShimToContext = (vm, bru) => {
   const bruObject = vm.newObject();
@@ -354,153 +495,9 @@ const addBruShimToContext = (vm, bru) => {
   });
   sleep.consume((handle) => vm.setProp(bruObject, 'sleep', handle));
 
-  let bruCookiesObject = vm.newObject();
-  const { evalCode: cookiesEvalCode } = createPropertyListBridge(vm, bru.cookies, bruCookiesObject, {
-    globalPath: 'globalThis.bru.cookies',
-    ...bridgeMethodSets('bru.cookies')
-  });
-
-  const _jarFn = vm.newFunction('_jar', () => {
-    const nativeJar = bru.cookies.jar();
-    const jarObj = vm.newObject();
-
-    const _getCookieFn = vm.newFunction('_getCookie', (url, cookieName) => {
-      const promise = vm.newPromise();
-      nativeJar.getCookie(vm.dump(url), vm.dump(cookieName), (err, cookie) => {
-        if (err) {
-          promise.reject(marshallToVm(cleanJson(err), vm));
-        } else {
-          promise.resolve(marshallToVm(cleanCircularJson(cookie), vm));
-        }
-      });
-      promise.settled.then(vm.runtime.executePendingJobs);
-      return promise.handle;
-    });
-    _getCookieFn.consume((handle) => vm.setProp(jarObj, '_getCookie', handle));
-
-    const _getCookiesFn = vm.newFunction('_getCookies', (url) => {
-      const promise = vm.newPromise();
-      nativeJar.getCookies(vm.dump(url), (err, cookies) => {
-        if (err) {
-          promise.reject(marshallToVm(cleanJson(err), vm));
-        } else {
-          promise.resolve(marshallToVm(cleanCircularJson(cookies), vm));
-        }
-      });
-      promise.settled.then(vm.runtime.executePendingJobs);
-      return promise.handle;
-    });
-    _getCookiesFn.consume((handle) => vm.setProp(jarObj, '_getCookies', handle));
-
-    const _setCookieFn = vm.newFunction('_setCookie', (url, nameOrCookieObj, value) => {
-      const promise = vm.newPromise();
-      const dumpedUrl = vm.dump(url);
-      const dumpedNameOrObj = vm.dump(nameOrCookieObj);
-
-      // Check if the second argument is an object (cookie object case)
-      if (typeof dumpedNameOrObj === 'object' && dumpedNameOrObj !== null) {
-        // Cookie object case: setCookie(url, cookieObject, callback)
-        nativeJar.setCookie(dumpedUrl, dumpedNameOrObj, (err) => {
-          if (err) {
-            promise.reject(marshallToVm(cleanJson(err), vm));
-          } else {
-            promise.resolve(vm.undefined);
-          }
-        });
-      } else {
-        // Name/value case: setCookie(url, name, value, callback)
-        const dumpedValue = value ? vm.dump(value) : '';
-        nativeJar.setCookie(dumpedUrl, dumpedNameOrObj, dumpedValue, (err) => {
-          if (err) {
-            promise.reject(marshallToVm(cleanJson(err), vm));
-          } else {
-            promise.resolve(vm.undefined);
-          }
-        });
-      }
-
-      promise.settled.then(vm.runtime.executePendingJobs);
-      return promise.handle;
-    });
-    _setCookieFn.consume((handle) => vm.setProp(jarObj, '_setCookie', handle));
-
-    const _setCookiesFn = vm.newFunction('_setCookies', (url, cookiesArray) => {
-      const promise = vm.newPromise();
-
-      nativeJar.setCookies(vm.dump(url), vm.dump(cookiesArray), (err) => {
-        if (err) {
-          promise.reject(marshallToVm(cleanJson(err), vm));
-        } else {
-          promise.resolve(vm.undefined);
-        }
-      });
-      promise.settled.then(vm.runtime.executePendingJobs);
-      return promise.handle;
-    });
-    _setCookiesFn.consume((handle) => vm.setProp(jarObj, '_setCookies', handle));
-
-    const _clearFn = vm.newFunction('_clear', () => {
-      const promise = vm.newPromise();
-      nativeJar.clear((err) => {
-        if (err) {
-          promise.reject(marshallToVm(cleanJson(err), vm));
-        } else {
-          promise.resolve(vm.undefined);
-        }
-      });
-      promise.settled.then(vm.runtime.executePendingJobs);
-      return promise.handle;
-    });
-    _clearFn.consume((handle) => vm.setProp(jarObj, '_clear', handle));
-
-    const _deleteCookiesFn = vm.newFunction('_deleteCookies', (url) => {
-      const promise = vm.newPromise();
-      nativeJar.deleteCookies(vm.dump(url), (err) => {
-        if (err) {
-          promise.reject(marshallToVm(cleanJson(err), vm));
-        } else {
-          promise.resolve(vm.undefined);
-        }
-      });
-      promise.settled.then(vm.runtime.executePendingJobs);
-      return promise.handle;
-    });
-    _deleteCookiesFn.consume((handle) => vm.setProp(jarObj, '_deleteCookies', handle));
-
-    const _deleteCookieFn = vm.newFunction('_deleteCookie', (url, cookieName) => {
-      const promise = vm.newPromise();
-      nativeJar.deleteCookie(vm.dump(url), vm.dump(cookieName), (err) => {
-        if (err) {
-          promise.reject(marshallToVm(cleanJson(err), vm));
-        } else {
-          promise.resolve(vm.undefined);
-        }
-      });
-      promise.settled.then(vm.runtime.executePendingJobs);
-      return promise.handle;
-    });
-    _deleteCookieFn.consume((handle) => vm.setProp(jarObj, '_deleteCookie', handle));
-
-    const _hasCookieFn = vm.newFunction('_hasCookie', (url, cookieName) => {
-      const promise = vm.newPromise();
-      nativeJar.hasCookie(vm.dump(url), vm.dump(cookieName), (err, exists) => {
-        if (err) {
-          promise.reject(marshallToVm(cleanJson(err), vm));
-        } else {
-          promise.resolve(marshallToVm(exists, vm));
-        }
-      });
-      promise.settled.then(vm.runtime.executePendingJobs);
-      return promise.handle;
-    });
-    _hasCookieFn.consume((handle) => vm.setProp(jarObj, '_hasCookie', handle));
-
-    return jarObj;
-  });
-  _jarFn.consume((handle) => vm.setProp(bruCookiesObject, '_jar', handle));
-
-  vm.setProp(bruObject, 'cookies', bruCookiesObject);
-  bruCookiesObject.dispose();
+  const cookiesEvalCode = attachPropertyList(vm, bru.cookies, bruObject, 'cookies', 'globalThis.bru', (cookiesObject) =>
+    addJarToCookies(vm, bru, cookiesObject)
+  );
 
   vm.setProp(bruObject, 'runner', bruRunnerObject);
   vm.setProp(vm.global, 'bru', bruObject);

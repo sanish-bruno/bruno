@@ -1,4 +1,4 @@
-const { createPropertyList } = require('./property-lists/create-property-list');
+const RequestHeaderList = require('./property-lists/request-header-list');
 
 class BrunoRequest {
   /**
@@ -23,7 +23,7 @@ class BrunoRequest {
     this.name = req.name;
     this.pathParams = req.pathParams;
     this.tags = req.tags || [];
-    this.headerList = createPropertyList('req.headerList', { source: this.req });
+    this.headerList = new RequestHeaderList(this.req);
     /**
      * We automatically parse the JSON body if the content type is JSON
      * This is to make it easier for the user to access the body directly

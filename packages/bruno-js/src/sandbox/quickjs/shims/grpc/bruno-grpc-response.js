@@ -1,5 +1,5 @@
 const { marshallToVm } = require('../../utils');
-const addGrpcMetadataListShimToContext = require('./grpc-metadata-list');
+const { attachPropertyList } = require('../../utils/property-list-bridge');
 const addGrpcMessageListShimToContext = require('./grpc-message-list');
 
 // Keep this in step with BrunoGrpcResponse.
@@ -17,7 +17,7 @@ const addBrunoGrpcResponseShimToContext = (vm, response, grpcObject) => {
 
   // response.metadata / .trailers / .messages — the same lists `bru.grpc.request` gets, read-only here
   const listEvalCode = ['metadata', 'trailers'].map((property) =>
-    addGrpcMetadataListShimToContext(vm, response[property], responseObject, property, 'globalThis.bru.grpc.response')
+    attachPropertyList(vm, response[property], responseObject, property, 'globalThis.bru.grpc.response')
   );
 
   listEvalCode.push(

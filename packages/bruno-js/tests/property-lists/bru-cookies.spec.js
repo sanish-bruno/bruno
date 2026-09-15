@@ -1,4 +1,4 @@
-const { createPropertyList } = require('../../src/property-lists/create-property-list');
+const CookieList = require('../../src/property-lists/cookie-list');
 const { PropertyList } = require('../../src/property-lists/property-list');
 
 describe('bru.cookies property list', () => {
@@ -9,7 +9,7 @@ describe('bru.cookies property list', () => {
   ];
 
   function createCookieList(overrides = {}) {
-    return createPropertyList('bru.cookies', {
+    return new CookieList({
       getUrl: overrides.getUrl || (() => 'https://example.com'),
       interpolate: overrides.interpolate || ((str) => str),
       createCookieJar: overrides.createCookieJar || (() => ({})),
@@ -249,12 +249,10 @@ describe('bru.cookies property list', () => {
 
   // ── Positional mutators ────────────────────────────────────────────────
 
-  test('positional mutators throw — the cookie jar has no ordering', () => {
+  test('has no positional mutators, since the jar has no ordering', () => {
     const list = createCookieList();
     for (const method of ['insert', 'insertAfter', 'prepend', 'append']) {
-      expect(() => list[method]({ key: 'x', value: '1' })).toThrow(
-        `${method}() is not available on bru.cookies — the cookie jar has no ordering`
-      );
+      expect(list[method]).toBeUndefined();
     }
   });
 

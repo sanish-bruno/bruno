@@ -1,24 +1,23 @@
-const { PropertyList } = require('../property-list');
+const { PropertyList } = require('./property-list');
 
 /**
- * ArrayStore — a StoreAdapter that owns its items outright.
- *
- * The one store with a real ordering, so it is the only one providing the
- * positional mutators (insert/insertAfter/prepend/append). Backs static
- * snapshots such as `res.headerList`.
+ * ArrayPropertyList — a list that owns its items outright, and the one surface
+ * with a real ordering, so the only one with positional mutators.
  */
-class ArrayStore {
+class ArrayPropertyList extends PropertyList {
   #items;
 
   /**
    * @param {Array} [items] - Initial items; copied, never aliased
+   * @param {object} [options] - PropertyList options
    */
-  constructor(items) {
+  constructor(items, options) {
+    super(options);
     this.#items = Array.isArray(items) ? [...items] : [];
   }
 
   read() {
-    return this.#items;
+    return [...this.#items];
   }
 
   #findIndex(ref) {
@@ -31,20 +30,11 @@ class ArrayStore {
     return -1;
   }
 
-  // ── Write methods ──────────────────────────────────────────────────────
-
-  /**
-   * Append an item to the end of the list.
-   * @param {object} item
-   */
   add(item) {
     this.#items.push(item);
   }
 
-  /**
-   * Update an existing item by key, or append if not found.
-   * @param {object} item
-   */
+  /** Update an existing item by key, or append if not found. */
   upsert(item) {
     const index = this.#items.findIndex((i) => i.key === item.key);
     if (index !== -1) {
@@ -54,10 +44,7 @@ class ArrayStore {
     }
   }
 
-  /**
-   * Remove items matching a predicate, key string, or item reference.
-   * @param {Function|string|object} predicate
-   */
+  /** Remove items matching a predicate, key string, or item reference. */
   remove(predicate) {
     if (typeof predicate === 'function') {
       this.#items = this.#items.filter((item) => !predicate(item));
@@ -71,23 +58,14 @@ class ArrayStore {
     }
   }
 
-  /** Remove all items. */
   clear() {
     this.#items = [];
   }
 
-  /**
-   * Replace all items with a new array.
-   * @param {Array} items
-   */
   populate(items) {
     this.#items = Array.isArray(items) ? [...items] : [];
   }
 
-  /**
-   * Clear and repopulate with new items.
-   * @param {Array} items
-   */
   repopulate(items) {
     this.populate(items);
   }
@@ -95,7 +73,7 @@ class ArrayStore {
   /**
    * Merge items from another PropertyList or array.
    * @param {PropertyList|Array} source
-   * @param {boolean} [prune=false] - If true, clear existing items first
+   * @param {boolean} [prune=false] - Clear existing items first
    */
   assimilate(source, prune) {
     if (prune) {
@@ -114,29 +92,15 @@ class ArrayStore {
     }
   }
 
-  // ── Positional methods ─────────────────────────────────────────────────
-
-  /**
-   * Alias for add().
-   * @param {object} item
-   */
   append(item) {
     this.add(item);
   }
 
-  /**
-   * Insert an item at the beginning of the list.
-   * @param {object} item
-   */
   prepend(item) {
     this.#items.unshift(item);
   }
 
-  /**
-   * Insert an item before a reference (key string or item object); appends when not found.
-   * @param {object} item
-   * @param {string|object} before
-   */
+  /** Insert before a reference (key string or item object); appends when not found. */
   insert(item, before) {
     const index = this.#findIndex(before);
     if (index === -1) {
@@ -146,11 +110,7 @@ class ArrayStore {
     }
   }
 
-  /**
-   * Insert an item after a reference (key string or item object); appends when not found.
-   * @param {object} item
-   * @param {string|object} after
-   */
+  /** Insert after a reference (key string or item object); appends when not found. */
   insertAfter(item, after) {
     const index = this.#findIndex(after);
     if (index === -1) {
@@ -161,4 +121,4 @@ class ArrayStore {
   }
 }
 
-module.exports = ArrayStore;
+module.exports = ArrayPropertyList;

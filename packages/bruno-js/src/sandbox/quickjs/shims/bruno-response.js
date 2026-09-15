@@ -1,6 +1,5 @@
 const { marshallToVm } = require('../utils');
-const { createPropertyListBridge } = require('../utils/property-list-bridge');
-const { bridgeMethodSets } = require('../../../property-lists/manifest');
+const { attachPropertyList } = require('../utils/property-list-bridge');
 
 // Marshal a QuickJS query argument to a host-compatible value.
 // Function handles are wrapped as native callbacks; other values are dumped as-is.
@@ -58,17 +57,9 @@ const addBrunoResponseShimToContext = (vm, res) => {
   headersVal.dispose();
 
   // res.headerList — read-only PropertyList bridge for structured header operations
-  let resHeadersEvalCode = '';
-  if (res?.headerList) {
-    const headerListObj = vm.newObject();
-    const bridge = createPropertyListBridge(vm, res.headerList, headerListObj, {
-      globalPath: 'globalThis.res.headerList',
-      ...bridgeMethodSets('res.headerList')
-    });
-    resHeadersEvalCode = bridge.evalCode;
-    vm.setProp(resFn, 'headerList', headerListObj);
-    headerListObj.dispose();
-  }
+  const resHeadersEvalCode = res?.headerList
+    ? attachPropertyList(vm, res.headerList, resFn, 'headerList', 'globalThis.res')
+    : '';
 
   let getStatusText = vm.newFunction('getStatusText', function () {
     return marshallToVm(res.getStatusText(), vm);

@@ -192,12 +192,10 @@ describe('res.headerList property list', () => {
       expect(() => headerList.repopulate([])).toThrow('read-only');
     });
 
-    test('positional mutators throw the unordered error, before the readonly check', () => {
+    test('has no positional mutators, since headers are a keyed map', () => {
       const { headerList } = createResHeaders();
       for (const method of ['insert', 'insertAfter', 'prepend', 'append']) {
-        expect(() => headerList[method]({ key: 'x', value: '1' })).toThrow(
-          `${method}() is not available on res.headerList — response headers are a keyed map with no ordering`
-        );
+        expect(headerList[method]).toBeUndefined();
       }
     });
 

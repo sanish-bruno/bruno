@@ -1,5 +1,5 @@
 const { marshallToVm } = require('../../utils');
-const addGrpcMetadataListShimToContext = require('./grpc-metadata-list');
+const { attachPropertyList } = require('../../utils/property-list-bridge');
 const addGrpcMessageListShimToContext = require('./grpc-message-list');
 
 // Keep this in step with BrunoGrpcRequest.
@@ -15,7 +15,7 @@ const addBrunoGrpcRequestShimToContext = (vm, request, grpcObject) => {
   }
 
   // request.metadata — writable in `beforeCallStart`, read-only in `afterCallEnd`
-  const metadataEvalCode = addGrpcMetadataListShimToContext(
+  const metadataEvalCode = attachPropertyList(
     vm,
     request.metadata,
     requestObject,
