@@ -2493,6 +2493,20 @@ const switchWorkspace = async (page: Page, workspaceName: string) => {
 type ScriptSubTab = 'pre-request' | 'post-response' | 'before-call-start' | 'before-message-send' | 'after-message-receive' | 'after-call-end';
 
 /**
+ * Reports whether a Script sub-tab has collapsed into the overflow dropdown — a collapsed sub-tab
+ * renders no trigger at all, so the trigger's absence is the answer. On the frame before the row
+ * measures itself every trigger renders, but clicking one there is self-correcting: selecting a tab
+ * pulls it back into the row.
+ * @param page - The page object
+ * @param subTab - The sub-tab to look for
+ */
+const isScriptSubTabCollapsed = async (page: Page, subTab: ScriptSubTab): Promise<boolean> => {
+  const locators = buildCommonLocators(page);
+  await expect(locators.paneTabs.scriptSubTabsList()).toBeVisible();
+  return (await locators.paneTabs.tabTrigger(subTab).count()) === 0;
+};
+
+/**
  * Navigate to a Script sub-tab (pre-request / post-response for http & graphql, the lifecycle
  * hooks for gRPC)
  * @param page - The page object
@@ -2503,32 +2517,16 @@ const selectScriptSubTab = async (page: Page, subTab: ScriptSubTab) => {
     await selectRequestPaneTab(page, 'Script');
     const locators = buildCommonLocators(page);
     const trigger = locators.paneTabs.tabTrigger(subTab);
-    const overflowTrigger = locators.paneTabs.scriptSubTabsOverflowTrigger();
 
-    // The sub-tab row re-measures via ResizeObserver/rAF, so a trigger can detach mid-click.
-    // Retry the whole sequence so a mid-action re-layout doesn't fail the test.
-    await expect(async () => {
-      if (await trigger.isVisible()) {
-        await trigger.click({ timeout: 2000 });
-        await expect(trigger).toContainClass('active', { timeout: 2000 });
-        return;
-      }
+    if (await isScriptSubTabCollapsed(page, subTab)) {
+      await locators.paneTabs.scriptSubTabsOverflowTrigger().click();
+      await locators.paneTabs.overflowItem(subTab).click();
+    } else {
+      await trigger.click();
+    }
 
-      if (await overflowTrigger.isVisible()) {
-        const item = locators.paneTabs.overflowItem(subTab);
-        // The chevron toggles the menu, so clicking it again after a failed attempt would close it.
-        if (!(await item.isVisible())) {
-          await overflowTrigger.click({ timeout: 2000 });
-        }
-        await item.waitFor({ state: 'visible', timeout: 2000 });
-        await item.click({ timeout: 2000 });
-        // Selecting pulls the tab into the visible row, so its trigger exists again.
-        await expect(trigger).toContainClass('active', { timeout: 2000 });
-        return;
-      }
-
-      throw new Error(`Script sub-tab "${subTab}" not found in visible tabs or overflow dropdown`);
-    }).toPass({ timeout: 15000 });
+    // Selecting an overflowed hook pulls it back into the visible row, so either path ends here.
+    await expect(trigger).toContainClass('active');
   });
 };
 
@@ -4133,6 +4131,7 @@ export {
   switchToOpenTab,
   createWorkspace,
   switchWorkspace,
+  isScriptSubTabCollapsed,
   selectScriptSubTab,
   editCodeMirrorEditor,
   setCodeMirrorEditorValue,
