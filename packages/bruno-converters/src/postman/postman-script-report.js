@@ -9,8 +9,49 @@
  * (`pm['secret_token']` -> "pm.secret_token").
  */
 
-import j from 'jscodeshift';
+import { parse } from '@babel/parser';
 import { extractPackagesFromScript } from './postman-package-detector';
+
+// Mirrors jscodeshift's babel5Compat grammar, so whatever the translator parses parses here.
+const PARSE_OPTIONS = {
+  sourceType: 'module',
+  allowImportExportEverywhere: true,
+  allowReturnOutsideFunction: true,
+  attachComment: false,
+  plugins: [
+    // Without it `pm?.a.b` is an OptionalMemberExpression, which goes uncounted.
+    'estree',
+    'jsx',
+    'doExpressions',
+    'functionBind',
+    'functionSent',
+    ['decorators', { decoratorsBeforeExport: false }]
+  ]
+};
+
+// Pruning only: neither can hold a member expression.
+const LEAF_TYPES = new Set([
+  'Identifier',
+  'Literal',
+  'PrivateIdentifier',
+  'PrivateName',
+  'Super',
+  'ThisExpression',
+  'TemplateElement',
+  'EmptyStatement',
+  'DebuggerStatement'
+]);
+const NON_CHILD_KEYS = new Set([
+  'type',
+  'start',
+  'end',
+  'loc',
+  'range',
+  'extra',
+  'leadingComments',
+  'trailingComments',
+  'innerComments'
+]);
 
 // Both roots are counted, each kept distinct: `postman.setEnvironmentVariable`
 // has no `pm.*` equivalent, so folding them together would invent an API name
@@ -20,27 +61,31 @@ const LEGACY_ROOT = 'postman';
 const POSTMAN_ROOTS = new Set([CURRENT_ROOT, LEGACY_ROOT]);
 
 /**
- * Walks outward from the root through the enclosing member/call chain.
+ * Resolves a member chain from its outermost link down the object spine.
  *
  *   pm.environment.get('KEY')       -> pm.environment.get
  *   pm.cookies.jar().getCookie(x)   -> pm.cookies.jar   (call terminates)
  *   pm['secret_token']              -> null             (never the key)
+ *   pm.environment['k'].get()       -> null             (computed voids the chain)
  */
-const buildApiIdentifier = (rootPath) => {
-  const segments = [rootPath.value.name];
-  let current = rootPath;
+const buildApiIdentifier = (node) => {
+  const segments = [];
+  let current = node;
 
-  while (current.parent) {
-    const node = current.parent.value;
-    if (node.type !== 'MemberExpression' || node.object !== current.value) break;
-    if (node.computed || node.property.type !== 'Identifier') return null;
-
-    segments.push(node.property.name);
-    current = current.parent;
+  while (current.type === 'MemberExpression') {
+    if (current.computed || current.property.type !== 'Identifier') return null;
+    segments.unshift(current.property.name);
+    current = current.object;
   }
 
+  if (current.type !== 'Identifier' || !POSTMAN_ROOTS.has(current.name)) return null;
+
+  segments.unshift(current.name);
   return segments.join('.');
 };
+
+const isWholeMemberChain = (node, parent) =>
+  node.type === 'MemberExpression' && !(parent?.type === 'MemberExpression' && parent.object === node);
 
 // One entry per root reference, whatever the chain depth: a looped call and
 // `pm.response.to.have.status(200)` are each a single call site. Property-style
@@ -49,22 +94,32 @@ export const countPmApiUsages = (script) => {
   const byApi = {};
   let total = 0;
 
-  j(script)
-    .find(j.Identifier)
-    .forEach((path) => {
-      if (!POSTMAN_ROOTS.has(path.value.name)) return;
+  const visit = (node, parent) => {
+    if (isWholeMemberChain(node, parent)) {
+      const identifier = buildApiIdentifier(node);
+      if (identifier) {
+        byApi[identifier] = (byApi[identifier] || 0) + 1;
+        total++;
+      }
+    }
 
-      // Rules out the global as a plain value, property keys, and members of
-      // unrelated objects.
-      const parent = path.parent?.value;
-      if (parent?.type !== 'MemberExpression' || parent.object !== path.value) return;
+    if (LEAF_TYPES.has(node.type)) return;
 
-      const identifier = buildApiIdentifier(path);
-      if (!identifier) return;
+    for (const key in node) {
+      if (NON_CHILD_KEYS.has(key)) continue;
+      const value = node[key];
 
-      byApi[identifier] = (byApi[identifier] || 0) + 1;
-      total++;
-    });
+      if (Array.isArray(value)) {
+        for (const child of value) {
+          if (typeof child?.type === 'string') visit(child, node);
+        }
+      } else if (typeof value?.type === 'string') {
+        visit(value, node);
+      }
+    }
+  };
+
+  visit(parse(script, PARSE_OPTIONS).program, null);
 
   return { total, byApi };
 };
@@ -95,7 +150,7 @@ export const buildScriptUsage = ({ source, translated, fellBackToRegex }) => {
   // A fallback never translated structurally, so it counts towards neither side
   // of the ratio.
   if (fellBackToRegex) {
-    return { apiCallsTotal: 0, apiCallsUntranslated: 0, untranslatedApis: {}, fellBackToRegex: true };
+    return { apiUsagesTotal: 0, apiUsagesUntranslated: 0, untranslatedApis: {}, fellBackToRegex: true };
   }
 
   try {
@@ -110,8 +165,8 @@ export const buildScriptUsage = ({ source, translated, fellBackToRegex }) => {
     }
 
     return {
-      apiCallsTotal: sourceApis.total,
-      apiCallsUntranslated: untranslated.total,
+      apiUsagesTotal: sourceApis.total,
+      apiUsagesUntranslated: untranslated.total,
       untranslatedApis,
       fellBackToRegex: false
     };
@@ -128,19 +183,19 @@ export const buildPreservedScriptsReport = () => ({ preserveScripts: true });
 const emptyReport = () => ({
   preserveScripts: false,
   fullyTranslated: true,
-  apiCallsTotal: 0,
-  apiCallsUntranslated: 0,
+  apiUsagesTotal: 0,
+  apiUsagesUntranslated: 0,
   untranslatedApis: {},
-  scriptsFellBackToRegex: 0
+  scriptsUsingRegexFallback: 0
 });
 
 const toReport = (usage) => ({
   preserveScripts: false,
-  fullyTranslated: usage.apiCallsUntranslated === 0 && !usage.fellBackToRegex,
-  apiCallsTotal: usage.apiCallsTotal,
-  apiCallsUntranslated: usage.apiCallsUntranslated,
+  fullyTranslated: usage.apiUsagesUntranslated === 0 && !usage.fellBackToRegex,
+  apiUsagesTotal: usage.apiUsagesTotal,
+  apiUsagesUntranslated: usage.apiUsagesUntranslated,
   untranslatedApis: usage.untranslatedApis,
-  scriptsFellBackToRegex: usage.fellBackToRegex ? 1 : 0
+  scriptsUsingRegexFallback: usage.fellBackToRegex ? 1 : 0
 });
 
 /**
@@ -161,9 +216,9 @@ export const mergeScriptTranslationReports = (reports) => {
   const merged = emptyReport();
 
   for (const report of present) {
-    merged.apiCallsTotal += report.apiCallsTotal || 0;
-    merged.apiCallsUntranslated += report.apiCallsUntranslated || 0;
-    merged.scriptsFellBackToRegex += report.scriptsFellBackToRegex || 0;
+    merged.apiUsagesTotal += report.apiUsagesTotal || 0;
+    merged.apiUsagesUntranslated += report.apiUsagesUntranslated || 0;
+    merged.scriptsUsingRegexFallback += report.scriptsUsingRegexFallback || 0;
 
     for (const [api, count] of Object.entries(report.untranslatedApis || {})) {
       merged.untranslatedApis[api] = (merged.untranslatedApis[api] || 0) + count;
@@ -171,7 +226,7 @@ export const mergeScriptTranslationReports = (reports) => {
   }
 
   // Recomputed, not ANDed, so the merged flag means what a single one does.
-  merged.fullyTranslated = merged.apiCallsUntranslated === 0 && merged.scriptsFellBackToRegex === 0;
+  merged.fullyTranslated = merged.apiUsagesUntranslated === 0 && merged.scriptsUsingRegexFallback === 0;
   return merged;
 };
 

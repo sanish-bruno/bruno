@@ -138,6 +138,49 @@ describe('countPmApiUsages', () => {
   });
 });
 
+describe('parser behaviour', () => {
+  it.each([
+    ['plain chain', 'pm.environment.get("k");', { 'pm.environment.get': 1 }],
+    ['optional chaining', 'pm?.environment.get("k");', { 'pm.environment.get': 1 }],
+    ['call ends the chain', 'pm.cookies.jar().getCookie(x);', { 'pm.cookies.jar': 1 }],
+    ['computed root', 'pm[\'secret_token\'];', {}],
+    ['computed mid-chain', 'pm.environment["dynamic"].get();', {}],
+    ['deep property chain', 'pm.response.to.have.status(200);', { 'pm.response.to.have.status': 1 }],
+    ['legacy root', 'postman.setEnvironmentVariable("a", 1);', { 'postman.setEnvironmentVariable': 1 }],
+    ['alias is not followed', 'const p = pm; p.environment.get("x");', {}],
+    ['pm as a property of something else', 'foo.pm.environment.get("k");', {}],
+    ['bare reference', 'pm;', {}],
+    ['property-style api', 'pm.info.requestName;', { 'pm.info.requestName': 1 }],
+    ['inside a callback', 'pm.sendRequest("u", (e, r) => { pm.environment.set("k", r.json().v); });',
+      { 'pm.sendRequest': 1, 'pm.environment.set': 1 }],
+    ['top-level await', 'async function f() { await pm.sendRequest("u"); }', { 'pm.sendRequest': 1 }],
+    ['hashbang', '#!/usr/bin/env node\npm.test("a", () => {});', { 'pm.test': 1 }],
+    ['class fields', 'class A { #x = 1; } pm.test("a", () => {});', { 'pm.test': 1 }],
+    ['nullish assignment', 'let a; a ??= pm.environment.get("k");', { 'pm.environment.get': 1 }],
+    ['no postman root at all', 'const a = items.map((i) => i.id);', {}]
+  ])('counts %s', (_label, script, byApi) => {
+    expect(scan(script).byApi).toEqual(byApi);
+  });
+
+  it('never counts a Postman call that only appears inside a comment', () => {
+    const script = [
+      '// pm.globals.set("leading")',
+      'pm.test("a", () => {});  // pm.globals.set("trailing")',
+      'function f() { /* pm.environment.get("inner") */ }',
+      'const empty = [ /* pm.cookies.jar() */ ];'
+    ].join('\n');
+
+    expect(scan(script)).toEqual({ total: 1, byApi: { 'pm.test': 1 } });
+  });
+
+  it('reports a total matching the number of counted call sites', () => {
+    const { total, byApi } = scan('pm.test("t", () => { pm.expect(pm.response.json().a).to.eql(1); });');
+
+    expect(byApi).toEqual({ 'pm.test': 1, 'pm.expect': 1, 'pm.response.json': 1 });
+    expect(total).toBe(3);
+  });
+});
+
 describe('buildScriptUsage', () => {
   it('treats an empty or whitespace-only script as absent', () => {
     expect(translated('')).toBeNull();
@@ -148,15 +191,19 @@ describe('buildScriptUsage', () => {
     const usage = translated('pm.environment.set("k", "secret-value");', 'bru.setEnvVar("k", "secret-value");');
 
     expect(Object.keys(usage).sort()).toEqual([
-      'apiCallsTotal', 'apiCallsUntranslated', 'fellBackToRegex', 'untranslatedApis'
+      'apiUsagesTotal', 'apiUsagesUntranslated', 'fellBackToRegex', 'untranslatedApis'
     ]);
     expect(JSON.stringify(usage)).not.toContain('secret-value');
   });
 
-  it('returns null rather than throwing when a block cannot be measured', () => {
-    // Unparseable output from the regex fallback path must not cost the whole
-    // import its report.
+  it('returns null rather than throwing when a block is unparseable', () => {
     expect(buildScriptUsage({ source: 'pm.test("x");', translated: 'function (', fellBackToRegex: false })).toBeNull();
+  });
+
+  it('reports an unmeasurable block the same way whether or not it mentions a Postman root', () => {
+    expect(
+      buildScriptUsage({ source: 'pm.test("x");', translated: 'pm.test("x"); function (', fellBackToRegex: false })
+    ).toBeNull();
   });
 });
 
@@ -172,10 +219,10 @@ describe('aggregateScriptUsage', () => {
     const empty = {
       preserveScripts: false,
       fullyTranslated: true,
-      apiCallsTotal: 0,
-      apiCallsUntranslated: 0,
+      apiUsagesTotal: 0,
+      apiUsagesUntranslated: 0,
       untranslatedApis: {},
-      scriptsFellBackToRegex: 0
+      scriptsUsingRegexFallback: 0
     };
 
     expect(aggregateScriptUsage([])).toEqual(empty);
@@ -191,10 +238,10 @@ describe('aggregateScriptUsage', () => {
     expect(report).toEqual({
       preserveScripts: false,
       fullyTranslated: true,
-      apiCallsTotal: 1,
-      apiCallsUntranslated: 0,
+      apiUsagesTotal: 1,
+      apiUsagesUntranslated: 0,
       untranslatedApis: {},
-      scriptsFellBackToRegex: 0
+      scriptsUsingRegexFallback: 0
     });
   });
 
@@ -206,8 +253,8 @@ describe('aggregateScriptUsage', () => {
       )
     ]);
 
-    expect(report.apiCallsTotal).toBe(2);
-    expect(report.apiCallsUntranslated).toBe(1);
+    expect(report.apiUsagesTotal).toBe(2);
+    expect(report.apiUsagesUntranslated).toBe(1);
     expect(report.untranslatedApis).toEqual({ 'pm.vault.get': 1 });
     expect(report.fullyTranslated).toBe(false);
   });
@@ -215,9 +262,9 @@ describe('aggregateScriptUsage', () => {
   it('counts a fallback separately and excludes it from both sides of the ratio', () => {
     const report = aggregateScriptUsage([fellBack('pm.vault.get("k");\npm.test("broken", function() { ')]);
 
-    expect(report.scriptsFellBackToRegex).toBe(1);
-    expect(report.apiCallsTotal).toBe(0);
-    expect(report.apiCallsUntranslated).toBe(0);
+    expect(report.scriptsUsingRegexFallback).toBe(1);
+    expect(report.apiUsagesTotal).toBe(0);
+    expect(report.apiUsagesUntranslated).toBe(0);
     expect(report.untranslatedApis).toEqual({});
   });
 
@@ -227,8 +274,8 @@ describe('aggregateScriptUsage', () => {
       fellBack('pm.test("x", function() { ')
     ]);
 
-    expect(report.apiCallsUntranslated).toBe(0);
-    expect(report.scriptsFellBackToRegex).toBe(1);
+    expect(report.apiUsagesUntranslated).toBe(0);
+    expect(report.scriptsUsingRegexFallback).toBe(1);
     expect(report.fullyTranslated).toBe(false);
   });
 
@@ -239,7 +286,7 @@ describe('aggregateScriptUsage', () => {
       translated('pm.vault.get("c");')
     ]);
 
-    expect(report.apiCallsTotal).toBe(3);
+    expect(report.apiUsagesTotal).toBe(3);
     expect(report.untranslatedApis).toEqual({ 'pm.vault.get': 3 });
   });
 
@@ -249,17 +296,17 @@ describe('aggregateScriptUsage', () => {
 
     expect(Object.keys(report.untranslatedApis)).toHaveLength(60);
     const sum = Object.values(report.untranslatedApis).reduce((a, b) => a + b, 0);
-    expect(sum).toBe(report.apiCallsUntranslated);
+    expect(sum).toBe(report.apiUsagesUntranslated);
   });
 });
 
 const collectionReport = (overrides = {}) => ({
   preserveScripts: false,
   fullyTranslated: true,
-  apiCallsTotal: 1,
-  apiCallsUntranslated: 0,
+  apiUsagesTotal: 1,
+  apiUsagesUntranslated: 0,
   untranslatedApis: {},
-  scriptsFellBackToRegex: 0,
+  scriptsUsingRegexFallback: 0,
   ...overrides
 });
 
@@ -276,15 +323,15 @@ describe('mergeScriptTranslationReports', () => {
     const merged = mergeScriptTranslationReports([
       collectionReport({
         fullyTranslated: false,
-        apiCallsTotal: 10,
-        apiCallsUntranslated: 3,
+        apiUsagesTotal: 10,
+        apiUsagesUntranslated: 3,
         untranslatedApis: { 'pm.vault.get': 3 },
-        scriptsFellBackToRegex: 1
+        scriptsUsingRegexFallback: 1
       }),
       collectionReport({
         fullyTranslated: false,
-        apiCallsTotal: 5,
-        apiCallsUntranslated: 2,
+        apiUsagesTotal: 5,
+        apiUsagesUntranslated: 2,
         untranslatedApis: { 'pm.vault.get': 1, 'pm.someUnknownApi': 1 }
       })
     ]);
@@ -292,10 +339,10 @@ describe('mergeScriptTranslationReports', () => {
     expect(merged).toEqual({
       preserveScripts: false,
       fullyTranslated: false,
-      apiCallsTotal: 15,
-      apiCallsUntranslated: 5,
+      apiUsagesTotal: 15,
+      apiUsagesUntranslated: 5,
       untranslatedApis: { 'pm.vault.get': 4, 'pm.someUnknownApi': 1 },
-      scriptsFellBackToRegex: 1
+      scriptsUsingRegexFallback: 1
     });
   });
 
@@ -308,10 +355,10 @@ describe('mergeScriptTranslationReports', () => {
   it('skips collections that produced no report', () => {
     const merged = mergeScriptTranslationReports([
       null,
-      collectionReport({ fullyTranslated: false, apiCallsUntranslated: 1, untranslatedApis: { 'pm.x': 1 } })
+      collectionReport({ fullyTranslated: false, apiUsagesUntranslated: 1, untranslatedApis: { 'pm.x': 1 } })
     ]);
 
-    expect(merged.apiCallsTotal).toBe(1);
+    expect(merged.apiUsagesTotal).toBe(1);
     expect(merged.untranslatedApis).toEqual({ 'pm.x': 1 });
   });
 
@@ -321,7 +368,7 @@ describe('mergeScriptTranslationReports', () => {
     expect(
       mergeScriptTranslationReports([
         collectionReport(),
-        collectionReport({ fullyTranslated: false, apiCallsUntranslated: 1, untranslatedApis: { 'pm.x': 1 } })
+        collectionReport({ fullyTranslated: false, apiUsagesUntranslated: 1, untranslatedApis: { 'pm.x': 1 } })
       ]).fullyTranslated
     ).toBe(false);
 
@@ -329,7 +376,7 @@ describe('mergeScriptTranslationReports', () => {
     expect(
       mergeScriptTranslationReports([
         collectionReport(),
-        collectionReport({ fullyTranslated: false, scriptsFellBackToRegex: 1 })
+        collectionReport({ fullyTranslated: false, scriptsUsingRegexFallback: 1 })
       ]).fullyTranslated
     ).toBe(false);
   });
@@ -339,12 +386,12 @@ describe('mergeScriptTranslationReports', () => {
       Object.fromEntries(Array.from({ length: 30 }, (_, i) => [`pm.api${offset + i}`, offset + i + 1]));
 
     const merged = mergeScriptTranslationReports([
-      collectionReport({ fullyTranslated: false, apiCallsUntranslated: 465, untranslatedApis: buildApis(0) }),
-      collectionReport({ fullyTranslated: false, apiCallsUntranslated: 1365, untranslatedApis: buildApis(30) })
+      collectionReport({ fullyTranslated: false, apiUsagesUntranslated: 465, untranslatedApis: buildApis(0) }),
+      collectionReport({ fullyTranslated: false, apiUsagesUntranslated: 1365, untranslatedApis: buildApis(30) })
     ]);
 
     expect(Object.keys(merged.untranslatedApis)).toHaveLength(60);
     const sum = Object.values(merged.untranslatedApis).reduce((a, b) => a + b, 0);
-    expect(sum).toBe(merged.apiCallsUntranslated);
+    expect(sum).toBe(merged.apiUsagesUntranslated);
   });
 });
